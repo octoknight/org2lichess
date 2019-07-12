@@ -1,0 +1,13 @@
+.full-height {
+  height: 100vh;
+}
+.jumbotron {
+  height: 100%;
+  margin-bottom: 0;
+}
+.ecf-logo {
+  align-self: flex-start;
+}
+body {
+  font-family: "Open Sans", sans-serif;
+}

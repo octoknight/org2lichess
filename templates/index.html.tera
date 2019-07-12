@@ -3,5 +3,19 @@
 {% block title %}Home{% endblock title %}
 
 {% block content %}
-Welcome!
+<div class="d-flex align-items-center flex-column">
+  <div class="mb-5">
+    This website allows you to link your English Chess Federation membership with Lichess.
+    Doing so will automatically make you a member of the <a href="https://lichess.org/team/english-chess-players">ECF team on Lichess</a>,
+    so you can play in ECF tournaments on Lichess.
+  </div>
+  <div>
+    <button type="button" class="btn btn-primary">
+      <div class="row">
+      <div class="col-6"><img class="img-fluid" src="https://lichess1.org/assets/favicon.128.png"></div>
+      <div class="col-6 align-self-center">Sign in with Lichess to continue</div>
+      </div>
+    </button>
+  </div>
+</div>
 {% endblock content %}
