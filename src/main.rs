@@ -2,10 +2,13 @@
 
 #[macro_use]
 extern crate rocket;
+extern crate postgres;
 extern crate rocket_contrib;
 
 use rocket_contrib::templates::Template;
 use std::collections::HashMap;
+
+mod db;
 
 fn empty_context() -> HashMap<u8, u8> {
     HashMap::new()
