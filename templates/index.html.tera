@@ -10,12 +10,14 @@
     so you can play in ECF tournaments on Lichess.
   </div>
   <div>
-    <button type="button" class="btn btn-primary">
-      <div class="row no-gutters">
-      <div class="col-6"><img class="img-fluid" src="https://lichess1.org/assets/favicon.128.png"></div>
-      <div class="col-6 align-self-center">Sign in with Lichess to continue</div>
-      </div>
-    </button>
+    <form method="GET" action="/auth">
+      <button type="submit" class="btn btn-primary">
+        <div class="row no-gutters">
+        <div class="col-6"><img class="img-fluid" src="https://lichess1.org/assets/favicon.128.png"></div>
+        <div class="col-6 align-self-center">Sign in with Lichess to continue</div>
+        </div>
+      </button>
+    </form>
   </div>
 </div>
 {% endblock content %}
