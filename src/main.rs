@@ -12,6 +12,7 @@ extern crate toml;
 use rand::Rng;
 use reqwest::header::*;
 use reqwest::{Method, Request, Url};
+use rocket::http::Cookies;
 use rocket::response::Redirect;
 use rocket_contrib::templates::Template;
 use std::collections::HashMap;
@@ -20,15 +21,17 @@ use std::fs;
 mod config;
 mod db;
 mod lichess;
+mod session;
 mod state;
 
 use config::Config;
+use session::Session;
 
 fn empty_context() -> HashMap<u8, u8> {
     HashMap::new()
 }
 
-#[get("/")]
+#[get("/", rank = 2)]
 fn index() -> Template {
     Template::render("index", &empty_context())
 }
@@ -43,6 +46,7 @@ fn auth(state: rocket::State<state::State>) -> Redirect {
 
 #[get("/oauth_redirect?<code>&<state>")]
 fn oauth_redirect(
+    mut cookies: Cookies<'_>,
     code: String,
     state: String,
     rocket_state: rocket::State<state::State>,
@@ -62,9 +66,21 @@ fn oauth_redirect(
         &rocket_state.config.lichess,
     )
     .unwrap();
+    session::set_session(
+        cookies,
+        Session {
+            lichess_id: user.id,
+            lichess_username: user.username,
+        },
+    );
+    Template::render("redirect", &empty_context())
+}
+
+#[get("/")]
+fn manage_authed(session: Session) -> Template {
     let mut ctx: HashMap<&str, &str> = HashMap::new();
-    ctx.insert("lichess_id", &user.id);
-    ctx.insert("lichess_user", &user.username);
+    ctx.insert("lichess_id", &session.lichess_id);
+    ctx.insert("lichess_user", &session.lichess_username);
     Template::render("user", &ctx)
 }
 
@@ -91,6 +107,6 @@ fn main() {
             oauth_state,
             http_client,
         })
-        .mount("/", routes![index, auth, oauth_redirect])
+        .mount("/", routes![index, auth, oauth_redirect, manage_authed])
         .launch();
 }
