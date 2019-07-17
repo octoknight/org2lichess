@@ -1,0 +1,7 @@
+{% extends "base" %}
+
+{% block title %}Logged in{% endblock title %}
+
+{% block content %}
+Welcome, {{ lichess_user }}
+{% endblock content %}

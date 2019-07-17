@@ -1,2 +1,4 @@
 url = "http://localhost:55555"
+lichess = "lichess.org"
 client_id = "Lichess OAuth client ID here"
+client_secret = "Lichess OAuth client secret here"

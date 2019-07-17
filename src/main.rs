@@ -4,11 +4,14 @@
 extern crate rocket;
 extern crate postgres;
 extern crate rand;
+extern crate reqwest;
 extern crate rocket_contrib;
 extern crate serde;
 extern crate toml;
 
 use rand::Rng;
+use reqwest::header::*;
+use reqwest::{Method, Request, Url};
 use rocket::response::Redirect;
 use rocket_contrib::templates::Template;
 use std::collections::HashMap;
@@ -16,6 +19,7 @@ use std::fs;
 
 mod config;
 mod db;
+mod lichess;
 mod state;
 
 use config::Config;
@@ -32,14 +36,35 @@ fn index() -> Template {
 #[get("/auth")]
 fn auth(state: rocket::State<state::State>) -> Redirect {
     Redirect::to(
-        format!("https://oauth.lichess.org/oauth/authorize?response_type=code&client_id={}&redirect_uri={}/oauth_redirect&scope=&state={}",
-        state.config.client_id, state.config.url, state.oauth_state)
+        format!("https://oauth.{}/oauth/authorize?response_type=code&client_id={}&redirect_uri={}/oauth_redirect&scope=&state={}",
+        state.config.lichess, state.config.client_id, state.config.url, state.oauth_state)
     )
 }
 
-#[get("/oauth_redirect")]
-fn oauth_redirect() -> Template {
-    Template::render("index", &empty_context())
+#[get("/oauth_redirect?<code>&<state>")]
+fn oauth_redirect(
+    code: String,
+    state: String,
+    rocket_state: rocket::State<state::State>,
+) -> Template {
+    let token = lichess::oauth_token_from_code(
+        &code,
+        &rocket_state.http_client,
+        &rocket_state.config.lichess,
+        &rocket_state.config.client_id,
+        &rocket_state.config.client_secret,
+        &format!("{}/oauth_redirect", rocket_state.config.url),
+    )
+    .unwrap();
+    let username = lichess::get_username(
+        &token,
+        &rocket_state.http_client,
+        &rocket_state.config.lichess,
+    )
+    .unwrap();
+    let mut ctx: HashMap<&str, &str> = HashMap::new();
+    ctx.insert("lichess_user", &username);
+    Template::render("user", &ctx)
 }
 
 fn main() {
@@ -56,12 +81,15 @@ fn main() {
         .to_string();
     println!("OAuth state: {}", &oauth_state);
 
+    let http_client = reqwest::Client::new();
+
     rocket::ignite()
         .attach(Template::fairing())
         .manage(state::State {
             config,
             oauth_state,
+            http_client,
         })
-        .mount("/", routes![index, auth])
+        .mount("/", routes![index, auth, oauth_redirect])
         .launch();
 }
