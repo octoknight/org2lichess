@@ -19,7 +19,7 @@
       </div>
     </div>
   </div>
-  <nav class="navbar fixed-bottom navbar-dark">
+  <nav class="navbar fixed-bottom navbar-dark bg-dark">
     <ul class="navbar-nav mr-auto">
       <li class="nav-item">
         <a class="nav-link" href="https://github.com/ProgramFOX/ecf2lichess">Source code</a>
