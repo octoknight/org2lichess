@@ -3,5 +3,5 @@
 {% block title %}Logged in{% endblock title %}
 
 {% block content %}
-Welcome, {{ lichess_user }}
+Welcome, {{ lichess_id }} ({{ lichess_user }})
 {% endblock content %}

@@ -11,11 +11,17 @@ pub struct OAuthToken {
     access_token: String,
 }
 
+#[derive(Deserialize)]
+pub struct User {
+    pub id: String,
+    pub username: String,
+}
+
 pub fn get_username(
     token: &OAuthToken,
     http_client: &Client,
     lichess_domain: &str,
-) -> Result<String, Box<std::error::Error>> {
+) -> Result<User, Box<std::error::Error>> {
     let mut req = Request::new(
         Method::GET,
         Url::parse(&format!("https://{}/api/account", lichess_domain))?,
@@ -26,11 +32,8 @@ pub fn get_username(
         AUTHORIZATION,
         format!("{} {}", token.token_type, token.access_token).parse()?,
     );
-    let response: Value = http_client.execute(req)?.json()?;
-    match &response["username"] {
-        Value::String(username) => Ok(username.to_string()),
-        _ => Err("Could not read username".into()),
-    }
+    let response: User = http_client.execute(req)?.json()?;
+    Ok(response)
 }
 
 pub fn oauth_token_from_code(

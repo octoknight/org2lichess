@@ -56,14 +56,15 @@ fn oauth_redirect(
         &format!("{}/oauth_redirect", rocket_state.config.url),
     )
     .unwrap();
-    let username = lichess::get_username(
+    let user = lichess::get_username(
         &token,
         &rocket_state.http_client,
         &rocket_state.config.lichess,
     )
     .unwrap();
     let mut ctx: HashMap<&str, &str> = HashMap::new();
-    ctx.insert("lichess_user", &username);
+    ctx.insert("lichess_id", &user.id);
+    ctx.insert("lichess_user", &user.username);
     Template::render("user", &ctx)
 }
 
