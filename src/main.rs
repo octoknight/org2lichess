@@ -60,7 +60,7 @@ fn oauth_redirect(
         &format!("{}/oauth_redirect", rocket_state.config.url),
     )
     .unwrap();
-    let user = lichess::get_username(
+    let user = lichess::get_user(
         &token,
         &rocket_state.http_client,
         &rocket_state.config.lichess,

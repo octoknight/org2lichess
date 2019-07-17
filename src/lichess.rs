@@ -17,7 +17,7 @@ pub struct User {
     pub username: String,
 }
 
-pub fn get_username(
+pub fn get_user(
     token: &OAuthToken,
     http_client: &Client,
     lichess_domain: &str,
