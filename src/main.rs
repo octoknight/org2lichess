@@ -100,12 +100,15 @@ fn main() {
 
     let http_client = reqwest::Client::new();
 
+    let db_client = db::connect(&config.connection_string).unwrap();
+
     rocket::ignite()
         .attach(Template::fairing())
         .manage(state::State {
             config,
             oauth_state,
             http_client,
+            db: db_client,
         })
         .mount("/", routes![index, auth, oauth_redirect, manage_authed])
         .launch();

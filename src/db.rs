@@ -1,12 +1,12 @@
 use postgres::{Client, NoTls};
 
-struct Membership {
+pub struct Membership {
     ecf_id: i32,
     lichess_id: String,
     exp_year: i32,
 }
 
-fn connect(connection_string: &str) -> Result<Client, postgres::Error> {
+pub fn connect(connection_string: &str) -> Result<Client, postgres::Error> {
     Client::connect(connection_string, NoTls)
 }
 
