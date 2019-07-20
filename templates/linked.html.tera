@@ -1,0 +1,7 @@
+{% extends "base" %}
+
+{% block title %}Overview{% endblock title %}
+
+{% block content %}
+Your Lichess account {{ lichess }} is linked with your ECF membership {{ ecf }}.
+{% endblock content %}

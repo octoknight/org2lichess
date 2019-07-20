@@ -12,8 +12,8 @@ extern crate toml;
 use rand::Rng;
 use reqwest::header::*;
 use reqwest::{Method, Request, Url};
-use rocket::http::Cookies;
-use rocket::response::Redirect;
+use rocket::http::{Cookies, Status};
+use rocket::response::{Redirect, Responder};
 use rocket_contrib::templates::Template;
 use std::collections::HashMap;
 use std::fs;
@@ -26,8 +26,8 @@ mod session;
 mod state;
 
 use config::Config;
-use session::Session;
 use db::EcfDbClient;
+use session::Session;
 
 fn empty_context() -> HashMap<u8, u8> {
     HashMap::new()
@@ -79,11 +79,22 @@ fn oauth_redirect(
 }
 
 #[get("/")]
-fn manage_authed(session: Session) -> Template {
+fn manage_authed(session: Session, state: rocket::State<state::State>) -> Result<Template, Status> {
     let mut ctx: HashMap<&str, &str> = HashMap::new();
-    ctx.insert("lichess_id", &session.lichess_id);
-    ctx.insert("lichess_user", &session.lichess_username);
-    Template::render("user", &ctx)
+
+    match state.db.get_member_for_lichess_id(session.lichess_id) {
+        Ok(Some(member)) => {
+            ctx.insert("lichess", &session.lichess_username);
+            let memid_str = &member.ecf_id.to_string();
+            ctx.insert("ecf", &memid_str);
+            Ok(Template::render("linked", &ctx))
+        }
+        Ok(None) => {
+            ctx.insert("lichess", &session.lichess_username);
+            Ok(Template::render("notlinked", &ctx))
+        }
+        _ => Err(Status::InternalServerError),
+    }
 }
 
 fn main() {

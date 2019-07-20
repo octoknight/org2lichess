@@ -2,9 +2,9 @@ use postgres::{Client, NoTls};
 use std::sync::RwLock;
 
 pub struct Membership {
-    ecf_id: i32,
-    lichess_id: String,
-    exp_year: i32,
+    pub ecf_id: i32,
+    pub lichess_id: String,
+    pub exp_year: i32,
 }
 
 pub fn connect(connection_string: &str) -> Result<Client, postgres::Error> {
@@ -18,8 +18,7 @@ pub trait EcfDbClient {
         lichess_id: String,
         exp_year: i32,
     ) -> Result<u64, postgres::Error>;
-    fn get_member_for_ecf_id(&self, ecf_id: i32)
-        -> Result<Option<Membership>, postgres::Error>;
+    fn get_member_for_ecf_id(&self, ecf_id: i32) -> Result<Option<Membership>, postgres::Error>;
     fn get_member_for_lichess_id(
         &self,
         lichess_id: String,
@@ -53,10 +52,7 @@ impl EcfDbClient for RwLock<Client> {
         )
     }
 
-    fn get_member_for_ecf_id(
-        &self,
-        ecf_id: i32,
-    ) -> Result<Option<Membership>, postgres::Error> {
+    fn get_member_for_ecf_id(&self, ecf_id: i32) -> Result<Option<Membership>, postgres::Error> {
         let rows = self.write().unwrap().query(
             "SELECT ecfid, lichessid, exp FROM memberships WHERE ecfid = $1",
             &[&ecf_id],
@@ -76,7 +72,9 @@ impl EcfDbClient for RwLock<Client> {
     }
 
     fn remove_membership(&self, ecf_id: i32) -> Result<u64, postgres::Error> {
-        self.write().unwrap().execute("DELETE FROM memberships WHERE ecfid = $1", &[&ecf_id])
+        self.write()
+            .unwrap()
+            .execute("DELETE FROM memberships WHERE ecfid = $1", &[&ecf_id])
     }
 
     fn update_expiry(&self, ecf_id: i32, new_exp_year: i32) -> Result<u64, postgres::Error> {
