@@ -1,0 +1,21 @@
+{% extends "base" %}
+
+{% block title %}Link ECF and Lichess memberships{% endblock title %}
+
+{% block content %}
+<p>
+Use the below form to link your Lichess account {{ lichess }} with your ECF membership.
+</p>
+<form method="POST" action="/link">
+  <div class="form-group">
+    <label for="ecf-id">ECF member ID</label>
+    <input type="text" class="form-control" placeholder="000000">
+  </div>
+  <div class="form-group">
+    <label for="ecf-password">Password</label>
+    <input type="password" class="form-control">
+    <small>Use the password that the ECF has given you for this form.</small>
+  </div>
+  <button class="btn btn-primary" type="submit">Link memberships</button>
+</form>
+{% endblock content %}

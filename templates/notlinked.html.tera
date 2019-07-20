@@ -3,5 +3,5 @@
 {% block title %}Overview{% endblock title %}
 
 {% block content %}
-Your Lichess account {{ lichess }} is not linked yet with your ECF membership.
+Your Lichess account {{ lichess }} is not linked yet with your ECF membership. <a href="/link">Link memberships.</a>
 {% endblock content %}

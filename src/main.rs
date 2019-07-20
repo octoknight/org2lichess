@@ -97,6 +97,19 @@ fn manage_authed(session: Session, state: rocket::State<state::State>) -> Result
     }
 }
 
+#[get("/link")]
+fn show_form(session: Session) -> Template {
+    let mut ctx: HashMap<&str, &str> = HashMap::new();
+    ctx.insert("lichess", &session.lichess_username);
+
+    Template::render("form", &ctx)
+}
+
+#[get("/link", rank = 2)]
+fn form_redirect_index() -> Redirect {
+    Redirect::to(uri!(index))
+}
+
 fn main() {
     let config_contents = fs::read_to_string("Config.toml").expect("Cannot read Config.toml");
     let config: Config = toml::from_str(&config_contents).expect("Invalid Config.toml");
@@ -123,6 +136,6 @@ fn main() {
             http_client,
             db: db_client,
         })
-        .mount("/", routes![index, auth, oauth_redirect, manage_authed])
+        .mount("/", routes![index, auth, oauth_redirect, manage_authed, show_form, form_redirect_index])
         .launch();
 }
