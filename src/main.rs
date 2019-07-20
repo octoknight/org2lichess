@@ -17,6 +17,7 @@ use rocket::response::Redirect;
 use rocket_contrib::templates::Template;
 use std::collections::HashMap;
 use std::fs;
+use std::sync::RwLock;
 
 mod config;
 mod db;
@@ -26,6 +27,7 @@ mod state;
 
 use config::Config;
 use session::Session;
+use db::EcfDbClient;
 
 fn empty_context() -> HashMap<u8, u8> {
     HashMap::new()
@@ -100,7 +102,7 @@ fn main() {
 
     let http_client = reqwest::Client::new();
 
-    let db_client = db::connect(&config.connection_string).unwrap();
+    let db_client = RwLock::new(db::connect(&config.connection_string).unwrap());
 
     rocket::ignite()
         .attach(Template::fairing())

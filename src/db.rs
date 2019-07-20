@@ -1,4 +1,5 @@
 use postgres::{Client, NoTls};
+use std::sync::RwLock;
 
 pub struct Membership {
     ecf_id: i32,
@@ -10,21 +11,21 @@ pub fn connect(connection_string: &str) -> Result<Client, postgres::Error> {
     Client::connect(connection_string, NoTls)
 }
 
-trait EcfDbClient {
+pub trait EcfDbClient {
     fn register_member(
-        &mut self,
+        &self,
         ecf_id: i32,
         lichess_id: String,
         exp_year: i32,
     ) -> Result<u64, postgres::Error>;
-    fn get_member_for_ecf_id(&mut self, ecf_id: i32)
+    fn get_member_for_ecf_id(&self, ecf_id: i32)
         -> Result<Option<Membership>, postgres::Error>;
     fn get_member_for_lichess_id(
-        &mut self,
+        &self,
         lichess_id: String,
     ) -> Result<Option<Membership>, postgres::Error>;
-    fn remove_membership(&mut self, ecf_id: i32) -> Result<u64, postgres::Error>;
-    fn update_expiry(&mut self, ecf_id: i32, new_exp_year: i32) -> Result<u64, postgres::Error>;
+    fn remove_membership(&self, ecf_id: i32) -> Result<u64, postgres::Error>;
+    fn update_expiry(&self, ecf_id: i32, new_exp_year: i32) -> Result<u64, postgres::Error>;
 }
 
 fn extract_one_membership(rows: &Vec<postgres::row::Row>) -> Option<Membership> {
@@ -38,24 +39,25 @@ fn extract_one_membership(rows: &Vec<postgres::row::Row>) -> Option<Membership> 
     })
 }
 
-impl EcfDbClient for Client {
+// TODO: [technical debt] replace .unwrap() by ? and still make it all compile
+impl EcfDbClient for RwLock<Client> {
     fn register_member(
-        &mut self,
+        &self,
         ecf_id: i32,
         lichess_id: String,
         exp_year: i32,
     ) -> Result<u64, postgres::Error> {
-        self.execute(
+        self.write().unwrap().execute(
             "INSERT INTO memberships (ecfid, lichessid, exp) VALUES ($1, $2, $3)",
             &[&ecf_id, &lichess_id, &exp_year],
         )
     }
 
     fn get_member_for_ecf_id(
-        &mut self,
+        &self,
         ecf_id: i32,
     ) -> Result<Option<Membership>, postgres::Error> {
-        let rows = self.query(
+        let rows = self.write().unwrap().query(
             "SELECT ecfid, lichessid, exp FROM memberships WHERE ecfid = $1",
             &[&ecf_id],
         )?;
@@ -63,22 +65,22 @@ impl EcfDbClient for Client {
     }
 
     fn get_member_for_lichess_id(
-        &mut self,
+        &self,
         lichess_id: String,
     ) -> Result<Option<Membership>, postgres::Error> {
-        let rows = self.query(
+        let rows = self.write().unwrap().query(
             "SELECT ecfid, lichessid, exp FROM memberships WHERE lichessid = $1",
             &[&lichess_id],
         )?;
         Ok(extract_one_membership(&rows))
     }
 
-    fn remove_membership(&mut self, ecf_id: i32) -> Result<u64, postgres::Error> {
-        self.execute("DELETE FROM memberships WHERE ecfid = $1", &[&ecf_id])
+    fn remove_membership(&self, ecf_id: i32) -> Result<u64, postgres::Error> {
+        self.write().unwrap().execute("DELETE FROM memberships WHERE ecfid = $1", &[&ecf_id])
     }
 
-    fn update_expiry(&mut self, ecf_id: i32, new_exp_year: i32) -> Result<u64, postgres::Error> {
-        self.execute(
+    fn update_expiry(&self, ecf_id: i32, new_exp_year: i32) -> Result<u64, postgres::Error> {
+        self.write().unwrap().execute(
             "UPDATE memberships SET exp = $1 WHERE ecfid = $2",
             &[&ecf_id, &new_exp_year],
         )
