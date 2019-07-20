@@ -13,6 +13,7 @@ use rand::Rng;
 use reqwest::header::*;
 use reqwest::{Method, Request, Url};
 use rocket::http::{Cookies, Status};
+use rocket::request::Form;
 use rocket::response::{Redirect, Responder};
 use rocket_contrib::templates::Template;
 use std::collections::HashMap;
@@ -101,6 +102,7 @@ fn manage_authed(session: Session, state: rocket::State<state::State>) -> Result
 fn show_form(session: Session) -> Template {
     let mut ctx: HashMap<&str, &str> = HashMap::new();
     ctx.insert("lichess", &session.lichess_username);
+    ctx.insert("error", "");
 
     Template::render("form", &ctx)
 }
@@ -108,6 +110,36 @@ fn show_form(session: Session) -> Template {
 #[get("/link", rank = 2)]
 fn form_redirect_index() -> Redirect {
     Redirect::to(uri!(index))
+}
+
+#[derive(FromForm)]
+struct EcfInfo {
+    #[form(field = "ecf-id")]
+    ecf_id: i32,
+    #[form(field = "ecf-password")]
+    ecf_password: String,
+}
+
+#[post("/link", data = "<form>")]
+fn link_memberships(form: Option<Form<EcfInfo>>, session: Session) -> Template {
+    let mut ctx: HashMap<&str, &str> = HashMap::new();
+    ctx.insert("lichess", &session.lichess_username);
+
+    match form {
+        Some(ecf_info) => {
+            if ecf_info.ecf_id < 0 {
+                ctx.insert("error", "Invalid ECF member ID.");
+                Template::render("form", &ctx)
+            } else {
+                ctx.insert("error", "not yet implemented");
+                Template::render("form", &ctx)
+            }
+        },
+        None => {
+            ctx.insert("error", "Invalid form data.");
+            Template::render("form", &ctx)
+        }
+    }
 }
 
 fn main() {
@@ -136,6 +168,6 @@ fn main() {
             http_client,
             db: db_client,
         })
-        .mount("/", routes![index, auth, oauth_redirect, manage_authed, show_form, form_redirect_index])
+        .mount("/", routes![index, auth, oauth_redirect, manage_authed, show_form, form_redirect_index, link_memberships])
         .launch();
 }
