@@ -3,7 +3,9 @@
 {% block title %}Logged in{% endblock title %}
 
 {% block content %}
-<p>You are logged in as <a href="https://lichess.org/@/{{ lichess }}">{{ lichess }}</a>. <a href="/logout">Log out.</a></p>
+<form method="POST" action="/logout" class="mb-3">
+  You are logged in as <a href="https://lichess.org/@/{{ lichess }}">{{ lichess }}</a>. <button class="btn btn-outline-secondary" type="submit">Log out</button>
+</form>
 
 {% block content2 %}{% endblock content2 %}
 {% endblock content %}

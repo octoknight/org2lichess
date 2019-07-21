@@ -40,3 +40,8 @@ pub fn set_session(mut cookies: Cookies<'_>, session: Session) {
         session.lichess_username,
     ));
 }
+
+pub fn remove_session(mut cookies: Cookies<'_>) {
+    cookies.remove_private(Cookie::named(LICHESS_ID_COOKIE));
+    cookies.remove_private(Cookie::named(LICHESS_USERNAME_COOKIE));
+}

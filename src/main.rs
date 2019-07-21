@@ -151,6 +151,12 @@ fn link_memberships(form: Option<Form<EcfInfo>>, session: Session, state: rocket
     }
 }
 
+#[post("/logout")]
+fn logout(mut cookies: Cookies<'_>) -> Template {
+    session::remove_session(cookies);
+    Template::render("redirect", &empty_context())
+}
+
 fn main() {
     let config_contents = fs::read_to_string("Config.toml").expect("Cannot read Config.toml");
     let config: Config = toml::from_str(&config_contents).expect("Invalid Config.toml");
@@ -177,6 +183,6 @@ fn main() {
             http_client,
             db: db_client,
         })
-        .mount("/", routes![index, auth, oauth_redirect, manage_authed, show_form, form_redirect_index, link_memberships])
+        .mount("/", routes![index, auth, oauth_redirect, manage_authed, show_form, form_redirect_index, link_memberships, logout])
         .launch();
 }
