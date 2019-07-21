@@ -1,5 +1,7 @@
 {% extends "loggedin" %}
 
 {% block content2 %}
-Your Lichess account is linked with your ECF membership {{ ecf }}.
+Your Lichess account is linked with your ECF membership <strong>{{ ecf }}</strong>. Your ECF membership expires on <strong>August 31th {{ exp }}</strong>.
+If you renew your ECF membership, you can come back here after August 31th to fill in the registry form again to remain a member of the ECF team on Lichess.
+If you don't come back here, you'll be automatically kicked from the ECF team on Lichess by <strong>September 14th {{ exp }}</strong>.
 {% endblock content2 %}

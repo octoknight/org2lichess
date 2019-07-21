@@ -21,8 +21,9 @@ pub trait EcfDbClient {
     fn get_member_for_ecf_id(&self, ecf_id: i32) -> Result<Option<Membership>, postgres::Error>;
     fn get_member_for_lichess_id(
         &self,
-        lichess_id: String,
+        lichess_id: &str,
     ) -> Result<Option<Membership>, postgres::Error>;
+    fn lichess_member_has_ecf(&self, lichess_id: &str) -> Result<bool, postgres::Error>;
     fn remove_membership(&self, ecf_id: i32) -> Result<u64, postgres::Error>;
     fn update_expiry(&self, ecf_id: i32, new_exp_year: i32) -> Result<u64, postgres::Error>;
 }
@@ -62,13 +63,18 @@ impl EcfDbClient for RwLock<Client> {
 
     fn get_member_for_lichess_id(
         &self,
-        lichess_id: String,
+        lichess_id: &str,
     ) -> Result<Option<Membership>, postgres::Error> {
         let rows = self.write().unwrap().query(
             "SELECT ecfid, lichessid, exp FROM memberships WHERE lichessid = $1",
             &[&lichess_id],
         )?;
         Ok(extract_one_membership(&rows))
+    }
+
+    fn lichess_member_has_ecf(&self, lichess_id: &str) -> Result<bool, postgres::Error> {
+        self.get_member_for_lichess_id(lichess_id)
+            .map(|member| member.is_some())
     }
 
     fn remove_membership(&self, ecf_id: i32) -> Result<u64, postgres::Error> {

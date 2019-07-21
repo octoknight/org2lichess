@@ -86,11 +86,13 @@ fn oauth_redirect(
 fn manage_authed(session: Session, state: rocket::State<state::State>) -> Result<Template, Status> {
     let mut ctx: HashMap<&str, &str> = HashMap::new();
 
-    match state.db.get_member_for_lichess_id(session.lichess_id) {
+    match state.db.get_member_for_lichess_id(&session.lichess_id) {
         Ok(Some(member)) => {
             ctx.insert("lichess", &session.lichess_username);
             let memid_str = &member.ecf_id.to_string();
             ctx.insert("ecf", &memid_str);
+            let exp_str = &member.exp_year.to_string();
+            ctx.insert("exp", &exp_str);
             Ok(Template::render("linked", &ctx))
         }
         Ok(None) => {
@@ -102,12 +104,24 @@ fn manage_authed(session: Session, state: rocket::State<state::State>) -> Result
 }
 
 #[get("/link")]
-fn show_form(session: Session) -> Template {
-    let mut ctx: HashMap<&str, &str> = HashMap::new();
-    ctx.insert("lichess", &session.lichess_username);
-    ctx.insert("error", "");
+fn show_form(
+    session: Session,
+    state: rocket::State<state::State>,
+) -> Result<Result<Template, Redirect>, postgres::Error> {
+    state
+        .db
+        .lichess_member_has_ecf(&session.lichess_id)
+        .map(|has_ecf| {
+            if has_ecf {
+                Err(Redirect::to(uri!(index)))
+            } else {
+                let mut ctx: HashMap<&str, &str> = HashMap::new();
+                ctx.insert("lichess", &session.lichess_username);
+                ctx.insert("error", "");
 
-    Template::render("form", &ctx)
+                Ok(Template::render("form", &ctx))
+            }
+        })
 }
 
 #[get("/link", rank = 2)]
@@ -128,11 +142,15 @@ fn link_memberships(
     form: Option<Form<EcfInfo>>,
     session: Session,
     state: rocket::State<state::State>,
-) -> Result<Redirect, Template> {
+) -> Result<Result<Redirect, Template>, postgres::Error> {
+    if state.db.lichess_member_has_ecf(&session.lichess_id)? {
+        return Ok(Ok(Redirect::to(uri!(index))));
+    }
+
     let mut ctx: HashMap<&str, &str> = HashMap::new();
     ctx.insert("lichess", &session.lichess_username);
 
-    match form {
+    Ok(match form {
         Some(ecf_info) => {
             if ecf_info.ecf_id < 0 {
                 ctx.insert("error", "Invalid ECF member ID.");
@@ -178,7 +196,7 @@ fn link_memberships(
             ctx.insert("error", "Invalid form data.");
             Err(Template::render("form", &ctx))
         }
-    }
+    })
 }
 
 #[post("/logout")]
