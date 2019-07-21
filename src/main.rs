@@ -8,7 +8,9 @@ extern crate reqwest;
 extern crate rocket_contrib;
 extern crate serde;
 extern crate toml;
+extern crate chrono;
 
+use chrono::{Datelike, Utc};
 use rand::Rng;
 use reqwest::header::*;
 use reqwest::{Method, Request, Url};
@@ -20,6 +22,7 @@ use std::collections::HashMap;
 use std::fs;
 use std::sync::RwLock;
 
+mod azolve;
 mod config;
 mod db;
 mod lichess;
@@ -121,7 +124,7 @@ struct EcfInfo {
 }
 
 #[post("/link", data = "<form>")]
-fn link_memberships(form: Option<Form<EcfInfo>>, session: Session) -> Template {
+fn link_memberships(form: Option<Form<EcfInfo>>, session: Session, state: rocket::State<state::State>) -> Result<Redirect, Template> {
     let mut ctx: HashMap<&str, &str> = HashMap::new();
     ctx.insert("lichess", &session.lichess_username);
 
@@ -129,15 +132,21 @@ fn link_memberships(form: Option<Form<EcfInfo>>, session: Session) -> Template {
         Some(ecf_info) => {
             if ecf_info.ecf_id < 0 {
                 ctx.insert("error", "Invalid ECF member ID.");
-                Template::render("form", &ctx)
+                Err(Template::render("form", &ctx))
             } else {
-                ctx.insert("error", "not yet implemented");
-                Template::render("form", &ctx)
+                if azolve::verify_user(&state.http_client, ecf_info.ecf_id, &ecf_info.ecf_password, &state.config.azolve_api, &state.config.azolve_api_pwd).unwrap() {
+                    let date = Utc::today();
+                    state.db.register_member(ecf_info.ecf_id, &session.lichess_id, date.year() + (if date.month() >= 9 { 1 } else { 0 })).unwrap();
+                    Ok(Redirect::to(uri!(index)))
+                } else {
+                    ctx.insert("error", "Membership verification failed, please check your member ID and password");
+                    Err(Template::render("form", &ctx))
+                }
             }
         },
         None => {
             ctx.insert("error", "Invalid form data.");
-            Template::render("form", &ctx)
+            Err(Template::render("form", &ctx))
         }
     }
 }

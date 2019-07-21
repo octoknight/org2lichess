@@ -15,7 +15,7 @@ pub trait EcfDbClient {
     fn register_member(
         &self,
         ecf_id: i32,
-        lichess_id: String,
+        lichess_id: &str,
         exp_year: i32,
     ) -> Result<u64, postgres::Error>;
     fn get_member_for_ecf_id(&self, ecf_id: i32) -> Result<Option<Membership>, postgres::Error>;
@@ -43,7 +43,7 @@ impl EcfDbClient for RwLock<Client> {
     fn register_member(
         &self,
         ecf_id: i32,
-        lichess_id: String,
+        lichess_id: &str,
         exp_year: i32,
     ) -> Result<u64, postgres::Error> {
         self.write().unwrap().execute(
