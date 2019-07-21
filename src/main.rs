@@ -2,13 +2,13 @@
 
 #[macro_use]
 extern crate rocket;
+extern crate chrono;
 extern crate postgres;
 extern crate rand;
 extern crate reqwest;
 extern crate rocket_contrib;
 extern crate serde;
 extern crate toml;
-extern crate chrono;
 
 use chrono::{Datelike, Utc};
 use rand::Rng;
@@ -124,7 +124,11 @@ struct EcfInfo {
 }
 
 #[post("/link", data = "<form>")]
-fn link_memberships(form: Option<Form<EcfInfo>>, session: Session, state: rocket::State<state::State>) -> Result<Redirect, Template> {
+fn link_memberships(
+    form: Option<Form<EcfInfo>>,
+    session: Session,
+    state: rocket::State<state::State>,
+) -> Result<Redirect, Template> {
     let mut ctx: HashMap<&str, &str> = HashMap::new();
     ctx.insert("lichess", &session.lichess_username);
 
@@ -134,16 +138,34 @@ fn link_memberships(form: Option<Form<EcfInfo>>, session: Session, state: rocket
                 ctx.insert("error", "Invalid ECF member ID.");
                 Err(Template::render("form", &ctx))
             } else {
-                if azolve::verify_user(&state.http_client, ecf_info.ecf_id, &ecf_info.ecf_password, &state.config.azolve_api, &state.config.azolve_api_pwd).unwrap() {
+                if azolve::verify_user(
+                    &state.http_client,
+                    ecf_info.ecf_id,
+                    &ecf_info.ecf_password,
+                    &state.config.azolve_api,
+                    &state.config.azolve_api_pwd,
+                )
+                .unwrap()
+                {
                     let date = Utc::today();
-                    state.db.register_member(ecf_info.ecf_id, &session.lichess_id, date.year() + (if date.month() >= 9 { 1 } else { 0 })).unwrap();
+                    state
+                        .db
+                        .register_member(
+                            ecf_info.ecf_id,
+                            &session.lichess_id,
+                            date.year() + (if date.month() >= 9 { 1 } else { 0 }),
+                        )
+                        .unwrap();
                     Ok(Redirect::to(uri!(index)))
                 } else {
-                    ctx.insert("error", "Membership verification failed, please check your member ID and password");
+                    ctx.insert(
+                        "error",
+                        "Membership verification failed, please check your member ID and password",
+                    );
                     Err(Template::render("form", &ctx))
                 }
             }
-        },
+        }
         None => {
             ctx.insert("error", "Invalid form data.");
             Err(Template::render("form", &ctx))
@@ -183,6 +205,18 @@ fn main() {
             http_client,
             db: db_client,
         })
-        .mount("/", routes![index, auth, oauth_redirect, manage_authed, show_form, form_redirect_index, link_memberships, logout])
+        .mount(
+            "/",
+            routes![
+                index,
+                auth,
+                oauth_redirect,
+                manage_authed,
+                show_form,
+                form_redirect_index,
+                link_memberships,
+                logout
+            ],
+        )
         .launch();
 }
