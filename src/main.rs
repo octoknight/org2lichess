@@ -138,31 +138,39 @@ fn link_memberships(
                 ctx.insert("error", "Invalid ECF member ID.");
                 Err(Template::render("form", &ctx))
             } else {
-                if azolve::verify_user(
+                match azolve::verify_user(
                     &state.http_client,
                     ecf_info.ecf_id,
                     &ecf_info.ecf_password,
                     &state.config.azolve_api,
                     &state.config.azolve_api_pwd,
-                )
-                .unwrap()
-                {
-                    let date = Utc::today();
-                    state
-                        .db
-                        .register_member(
-                            ecf_info.ecf_id,
-                            &session.lichess_id,
-                            date.year() + (if date.month() >= 9 { 1 } else { 0 }),
-                        )
-                        .unwrap();
-                    Ok(Redirect::to(uri!(index)))
-                } else {
-                    ctx.insert(
-                        "error",
-                        "Membership verification failed, please check your member ID and password",
-                    );
-                    Err(Template::render("form", &ctx))
+                ) {
+                    Ok(valid_user) => {
+                        if valid_user {
+                            let date = Utc::today();
+                            state
+                                .db
+                                .register_member(
+                                    ecf_info.ecf_id,
+                                    &session.lichess_id,
+                                    date.year() + (if date.month() >= 9 { 1 } else { 0 }),
+                                ).map(|_| Redirect::to(uri!(index)))
+                                .map_err(|_| {
+                                    ctx.insert("error", "We are having database connectivity problems. Please try again later.");
+                                    Template::render("form", &ctx)
+                                })
+                        } else {
+                            ctx.insert(
+                                "error",
+                                "Membership verification failed, please check your member ID and password",
+                            );
+                            Err(Template::render("form", &ctx))
+                        }
+                    }
+                    _ => {
+                        ctx.insert("error", "At the moment we're unable to verify your membership. Please try again later.");
+                        Err(Template::render("form", &ctx))
+                    }
                 }
             }
         }

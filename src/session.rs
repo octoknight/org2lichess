@@ -1,8 +1,8 @@
+use chrono::Duration;
 use rocket::http::{Cookie, Cookies};
 use rocket::outcome::IntoOutcome;
 use rocket::request::{FromRequest, Outcome};
 use rocket::Request;
-use chrono::Duration;
 
 pub struct Session {
     pub lichess_id: String,
