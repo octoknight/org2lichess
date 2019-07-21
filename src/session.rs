@@ -2,6 +2,7 @@ use rocket::http::{Cookie, Cookies};
 use rocket::outcome::IntoOutcome;
 use rocket::request::{FromRequest, Outcome};
 use rocket::Request;
+use chrono::Duration;
 
 pub struct Session {
     pub lichess_id: String,
@@ -34,11 +35,13 @@ impl<'a, 'r> FromRequest<'a, 'r> for Session {
 }
 
 pub fn set_session(mut cookies: Cookies<'_>, session: Session) {
-    cookies.add_private(Cookie::new(LICHESS_ID_COOKIE, session.lichess_id));
-    cookies.add_private(Cookie::new(
-        LICHESS_USERNAME_COOKIE,
-        session.lichess_username,
-    ));
+    let mut id_cookie = Cookie::new(LICHESS_ID_COOKIE, session.lichess_id);
+    id_cookie.set_max_age(Duration::minutes(55));
+    cookies.add_private(id_cookie);
+
+    let mut username_cookie = Cookie::new(LICHESS_USERNAME_COOKIE, session.lichess_username);
+    username_cookie.set_max_age(Duration::minutes(55));
+    cookies.add_private(username_cookie);
 }
 
 pub fn remove_session(mut cookies: Cookies<'_>) {
