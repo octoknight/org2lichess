@@ -25,6 +25,7 @@ use std::sync::RwLock;
 mod azolve;
 mod config;
 mod db;
+mod ecf;
 mod lichess;
 mod session;
 mod state;
@@ -103,25 +104,33 @@ fn manage_authed(session: Session, state: rocket::State<state::State>) -> Result
     }
 }
 
+fn can_use_form(
+    session: &Session,
+    state: &rocket::State<state::State>,
+) -> Result<bool, postgres::Error> {
+    state
+        .db
+        .get_member_for_lichess_id(&session.lichess_id)
+        .map(|maybe_member| match maybe_member {
+            Some(member) => ecf::is_past_expiry(member.exp_year),
+            None => false,
+        })
+}
+
 #[get("/link")]
 fn show_form(
     session: Session,
     state: rocket::State<state::State>,
 ) -> Result<Result<Template, Redirect>, postgres::Error> {
-    state
-        .db
-        .lichess_member_has_ecf(&session.lichess_id)
-        .map(|has_ecf| {
-            if has_ecf {
-                Err(Redirect::to(uri!(index)))
-            } else {
-                let mut ctx: HashMap<&str, &str> = HashMap::new();
-                ctx.insert("lichess", &session.lichess_username);
-                ctx.insert("error", "");
+    if can_use_form(&session, &state)? {
+        Ok(Err(Redirect::to(uri!(index))))
+    } else {
+        let mut ctx: HashMap<&str, &str> = HashMap::new();
+        ctx.insert("lichess", &session.lichess_username);
+        ctx.insert("error", "");
 
-                Ok(Template::render("form", &ctx))
-            }
-        })
+        Ok(Ok(Template::render("form", &ctx)))
+    }
 }
 
 #[get("/link", rank = 2)]
@@ -143,7 +152,7 @@ fn link_memberships(
     session: Session,
     state: rocket::State<state::State>,
 ) -> Result<Result<Redirect, Template>, postgres::Error> {
-    if state.db.lichess_member_has_ecf(&session.lichess_id)? {
+    if !can_use_form(&session, &state)? {
         return Ok(Ok(Redirect::to(uri!(index))));
     }
 
@@ -171,7 +180,7 @@ fn link_memberships(
                                 .register_member(
                                     ecf_info.ecf_id,
                                     &session.lichess_id,
-                                    date.year() + (if date.month() >= 9 { 1 } else { 0 }),
+                                    date.year() + (if ecf::is_past_expiry_this_year() { 1 } else { 0 }),
                                 ).map(|_| Redirect::to(uri!(index)))
                                 .map_err(|_| {
                                     ctx.insert("error", "We are having database connectivity problems. Please try again later.");
