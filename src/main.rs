@@ -84,23 +84,33 @@ fn oauth_redirect(
 }
 
 #[get("/")]
-fn manage_authed(session: Session, state: rocket::State<state::State>) -> Result<Template, Status> {
+fn manage_authed(
+    session: Session,
+    state: rocket::State<state::State>,
+) -> Result<Template, postgres::Error> {
     let mut ctx: HashMap<&str, &str> = HashMap::new();
 
-    match state.db.get_member_for_lichess_id(&session.lichess_id) {
-        Ok(Some(member)) => {
+    match state.db.get_member_for_lichess_id(&session.lichess_id)? {
+        Some(member) => {
             ctx.insert("lichess", &session.lichess_username);
             let memid_str = &member.ecf_id.to_string();
             ctx.insert("ecf", &memid_str);
             let exp_str = &member.exp_year.to_string();
             ctx.insert("exp", &exp_str);
+            ctx.insert(
+                "can_renew",
+                if can_use_form(&session, &state)? {
+                    "true"
+                } else {
+                    "false"
+                },
+            );
             Ok(Template::render("linked", &ctx))
         }
-        Ok(None) => {
+        None => {
             ctx.insert("lichess", &session.lichess_username);
             Ok(Template::render("notlinked", &ctx))
         }
-        _ => Err(Status::InternalServerError),
     }
 }
 
