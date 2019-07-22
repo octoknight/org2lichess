@@ -48,7 +48,10 @@ impl EcfDbClient for RwLock<Client> {
         exp_year: i32,
     ) -> Result<u64, postgres::Error> {
         let mut client = self.write().unwrap();
-        client.execute("DELETE FROM memberships WHERE ecfid = $1 OR lichessid = $2", &[&ecf_id, &lichess_id])?;
+        client.execute(
+            "DELETE FROM memberships WHERE ecfid = $1 OR lichessid = $2",
+            &[&ecf_id, &lichess_id],
+        )?;
         client.execute(
             "INSERT INTO memberships (ecfid, lichessid, exp) VALUES ($1, $2, $3);",
             &[&ecf_id, &lichess_id, &exp_year],
