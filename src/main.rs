@@ -123,7 +123,7 @@ fn can_use_form(
         .get_member_for_lichess_id(&session.lichess_id)
         .map(|maybe_member| match maybe_member {
             Some(member) => ecf::is_past_expiry(member.exp_year),
-            None => false,
+            None => true,
         })
 }
 
