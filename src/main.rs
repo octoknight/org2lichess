@@ -132,7 +132,7 @@ fn show_form(
     session: Session,
     state: rocket::State<state::State>,
 ) -> Result<Result<Template, Redirect>, postgres::Error> {
-    if can_use_form(&session, &state)? {
+    if !can_use_form(&session, &state)? {
         Ok(Err(Redirect::to(uri!(index))))
     } else {
         let mut ctx: HashMap<&str, &str> = HashMap::new();
