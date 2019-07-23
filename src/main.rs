@@ -46,7 +46,7 @@ fn index() -> Template {
 #[get("/auth")]
 fn auth(state: rocket::State<state::State>) -> Redirect {
     Redirect::to(
-        format!("https://oauth.{}/oauth/authorize?response_type=code&client_id={}&redirect_uri={}/oauth_redirect&scope=&state={}",
+        format!("https://oauth.{}/oauth/authorize?response_type=code&client_id={}&redirect_uri={}/oauth_redirect&scope=team:write&state={}",
         state.config.lichess, state.config.client_id, state.config.url, state.oauth_state)
     )
 }
@@ -78,6 +78,7 @@ fn oauth_redirect(
         Session {
             lichess_id: user.id,
             lichess_username: user.username,
+            oauth_token: token.access_token,
         },
     );
     Template::render("redirect", &empty_context())
@@ -161,7 +162,7 @@ fn link_memberships(
     form: Option<Form<EcfInfo>>,
     session: Session,
     state: rocket::State<state::State>,
-) -> Result<Result<Redirect, Template>, postgres::Error> {
+) -> Result<Result<Redirect, Template>, Box<std::error::Error>> {
     if !can_use_form(&session, &state)? {
         return Ok(Ok(Redirect::to(uri!(index))));
     }
@@ -184,18 +185,30 @@ fn link_memberships(
                 ) {
                     Ok(valid_user) => {
                         if valid_user {
-                            let date = Utc::today();
-                            state
+                            if lichess::join_team(
+                                &state.http_client,
+                                &session.oauth_token,
+                                &state.config.lichess,
+                                &state.config.team_id,
+                            ) {
+                                state
                                 .db
                                 .register_member(
                                     ecf_info.ecf_id,
                                     &session.lichess_id,
-                                    date.year() + (if ecf::is_past_expiry_this_year() { 1 } else { 0 }),
+                                    ecf::current_london_year() + (if ecf::is_past_expiry_this_year() { 1 } else { 0 }),
                                 ).map(|_| Redirect::to(uri!(index)))
                                 .map_err(|_| {
                                     ctx.insert("error", "We are having database connectivity problems. Please try again later.");
                                     Template::render("form", &ctx)
                                 })
+                            } else {
+                                ctx.insert(
+                                "error",
+                                "Could not add you to the Lichess team, please try again later.",
+                            );
+                                Err(Template::render("form", &ctx))
+                            }
                         } else {
                             ctx.insert(
                                 "error",
