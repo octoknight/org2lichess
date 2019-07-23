@@ -27,7 +27,6 @@ pub trait EcfDbClient {
     ) -> Result<Option<Membership>, postgres::Error>;
     fn lichess_member_has_ecf(&self, lichess_id: &str) -> Result<bool, postgres::Error>;
     fn remove_membership(&self, ecf_id: i32) -> Result<u64, postgres::Error>;
-    fn update_expiry(&self, ecf_id: i32, new_exp_year: i32) -> Result<u64, postgres::Error>;
     fn get_members(&self) -> Result<Vec<Membership>, postgres::Error>;
     fn get_members_with_at_most_expiry_year(
         &self,
@@ -93,13 +92,6 @@ impl EcfDbClient for RwLock<Client> {
         self.write()
             .unwrap()
             .execute("DELETE FROM memberships WHERE ecfid = $1", &[&ecf_id])
-    }
-
-    fn update_expiry(&self, ecf_id: i32, new_exp_year: i32) -> Result<u64, postgres::Error> {
-        self.write().unwrap().execute(
-            "UPDATE memberships SET exp = $1 WHERE ecfid = $2",
-            &[&ecf_id, &new_exp_year],
-        )
     }
 
     fn get_members(&self) -> Result<Vec<Membership>, postgres::Error> {
