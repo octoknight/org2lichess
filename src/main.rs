@@ -149,6 +149,17 @@ fn form_redirect_index() -> Redirect {
     Redirect::to(uri!(index))
 }
 
+fn ecf_id_unused(
+    ecf_id: i32,
+    session: &Session,
+    state: &rocket::State<state::State>,
+) -> Result<bool, postgres::Error> {
+    match state.db.get_member_for_ecf_id(ecf_id)? {
+        Some(member) => Ok(&session.lichess_id == &member.lichess_id),
+        None => Ok(true),
+    }
+}
+
 #[derive(FromForm)]
 struct EcfInfo {
     #[form(field = "ecf-id")]
@@ -183,39 +194,46 @@ fn link_memberships(
                     &state.config.azolve_api,
                     &state.config.azolve_api_pwd,
                 ) {
-                    Ok(valid_user) => {
-                        if valid_user {
-                            if lichess::join_team(
-                                &state.http_client,
-                                &session.oauth_token,
-                                &state.config.lichess,
-                                &state.config.team_id,
-                            ) {
-                                state
-                                .db
-                                .register_member(
+                    Ok(true) => {
+                        if lichess::join_team(
+                            &state.http_client,
+                            &session.oauth_token,
+                            &state.config.lichess,
+                            &state.config.team_id,
+                        ) {
+                            if ecf_id_unused(ecf_info.ecf_id, &session, &state)? {
+                                state.db.register_member(
                                     ecf_info.ecf_id,
                                     &session.lichess_id,
-                                    ecf::current_london_year() + (if ecf::is_past_expiry_this_year() { 1 } else { 0 }),
-                                ).map(|_| Redirect::to(uri!(index)))
-                                .map_err(|_| {
-                                    ctx.insert("error", "We are having database connectivity problems. Please try again later.");
-                                    Template::render("form", &ctx)
-                                })
+                                    ecf::current_london_year()
+                                        + (if ecf::is_past_expiry_this_year() {
+                                            1
+                                        } else {
+                                            0
+                                        }),
+                                )?;
+                                Ok(Redirect::to(uri!(index)))
                             } else {
                                 ctx.insert(
-                                "error",
-                                "Could not add you to the Lichess team, please try again later.",
-                            );
+                                    "error",
+                                    "This ECF membership is already linked to a Lichess account.",
+                                );
                                 Err(Template::render("form", &ctx))
                             }
                         } else {
                             ctx.insert(
                                 "error",
-                                "Membership verification failed, please check your member ID and password",
+                                "Could not add you to the Lichess team, please try again later.",
                             );
                             Err(Template::render("form", &ctx))
                         }
+                    }
+                    Ok(false) => {
+                        ctx.insert(
+                                "error",
+                                "Membership verification failed, please check your member ID and password",
+                            );
+                        Err(Template::render("form", &ctx))
                     }
                     _ => {
                         ctx.insert("error", "At the moment we're unable to verify your membership. Please try again later.");
