@@ -10,8 +10,7 @@ extern crate rocket_contrib;
 extern crate serde;
 extern crate toml;
 
-use rand::Rng;
-use rocket::http::Cookies;
+use rocket::http::{Cookies, Status};
 use rocket::request::Form;
 use rocket::response::Redirect;
 use rocket_contrib::templates::Template;
@@ -24,11 +23,13 @@ mod config;
 mod db;
 mod ecf;
 mod lichess;
+mod randstr;
 mod session;
 mod state;
 
 use config::Config;
 use db::EcfDbClient;
+use randstr::random_oauth_state;
 use session::Session;
 
 fn empty_context() -> HashMap<u8, u8> {
@@ -41,44 +42,55 @@ fn index() -> Template {
 }
 
 #[get("/auth")]
-fn auth(state: rocket::State<state::State>) -> Redirect {
-    Redirect::to(
-        format!("https://oauth.{}/oauth/authorize?response_type=code&client_id={}&redirect_uri={}/oauth_redirect&scope=team:write&state={}",
-        state.config.lichess, state.config.client_id, state.config.url, state.oauth_state)
-    )
+fn auth(
+    state: rocket::State<state::State>,
+    cookies: Cookies<'_>,
+) -> Result<Redirect, Box<dyn std::error::Error>> {
+    let oauth_state = random_oauth_state()?;
+    session::set_oauth_state_cookie(cookies, &oauth_state);
+
+    let url = format!("https://oauth.{}/oauth/authorize?response_type=code&client_id={}&redirect_uri={}/oauth_redirect&scope=team:write&state={}",
+        state.config.lichess, state.config.client_id, state.config.url, oauth_state);
+
+    Ok(Redirect::to(url))
 }
 
 #[get("/oauth_redirect?<code>&<state>")]
 fn oauth_redirect(
-    cookies: Cookies<'_>,
+    mut cookies: Cookies<'_>,
     code: String,
     state: String,
     rocket_state: rocket::State<state::State>,
-) -> Result<Template, Box<dyn std::error::Error>> {
-    let token = lichess::oauth_token_from_code(
-        &code,
-        &rocket_state.http_client,
-        &rocket_state.config.lichess,
-        &rocket_state.config.client_id,
-        &rocket_state.config.client_secret,
-        &format!("{}/oauth_redirect", rocket_state.config.url),
-    )
-    .unwrap();
-    let user = lichess::get_user(
-        &token,
-        &rocket_state.http_client,
-        &rocket_state.config.lichess,
-    )
-    .unwrap();
-    session::set_session(
-        cookies,
-        Session {
-            lichess_id: user.id,
-            lichess_username: user.username,
-            oauth_token: token.access_token,
-        },
-    )?;
-    Ok(Template::render("redirect", &empty_context()))
+) -> Result<Result<Template, Status>, Box<dyn std::error::Error>> {
+    match session::pop_oauth_state(&mut cookies).map(|v| &v == &state) {
+        Some(true) => {
+            let token = lichess::oauth_token_from_code(
+                &code,
+                &rocket_state.http_client,
+                &rocket_state.config.lichess,
+                &rocket_state.config.client_id,
+                &rocket_state.config.client_secret,
+                &format!("{}/oauth_redirect", rocket_state.config.url),
+            )
+            .unwrap();
+            let user = lichess::get_user(
+                &token,
+                &rocket_state.http_client,
+                &rocket_state.config.lichess,
+            )
+            .unwrap();
+            session::set_session(
+                cookies,
+                Session {
+                    lichess_id: user.id,
+                    lichess_username: user.username,
+                    oauth_token: token.access_token,
+                },
+            )?;
+            Ok(Ok(Template::render("redirect", &empty_context())))
+        }
+        _ => Ok(Err(Status::BadRequest)),
+    }
 }
 
 #[get("/")]
@@ -261,16 +273,6 @@ fn main() {
     let config_contents = fs::read_to_string("Config.toml").expect("Cannot read Config.toml");
     let config: Config = toml::from_str(&config_contents).expect("Invalid Config.toml");
 
-    let mut rng = rand::thread_rng();
-    let mut oauth_state_bytes: [u8; 12] = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
-    for x in &mut oauth_state_bytes {
-        *x = (rng.gen::<u8>() % 26) + 97;
-    }
-    let oauth_state = std::str::from_utf8(&oauth_state_bytes)
-        .expect("Invalid OAuth state")
-        .to_string();
-    println!("OAuth state: {}", &oauth_state);
-
     let http_client = reqwest::Client::new();
 
     let db_client = RwLock::new(db::connect(&config.connection_string).unwrap());
@@ -279,7 +281,6 @@ fn main() {
         .attach(Template::fairing())
         .manage(state::State {
             config,
-            oauth_state,
             http_client,
             db: db_client,
         })
