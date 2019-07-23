@@ -246,6 +246,11 @@ fn link_memberships(
     })
 }
 
+#[post("/link", rank = 2)]
+fn try_link_unauthenticated() -> Redirect {
+    Redirect::to(uri!(index))
+}
+
 #[post("/logout")]
 fn logout(cookies: Cookies<'_>) -> Template {
     session::remove_session(cookies);
@@ -288,7 +293,8 @@ fn main() {
                 show_form,
                 form_redirect_index,
                 link_memberships,
-                logout
+                logout,
+                try_link_unauthenticated
             ],
         )
         .launch();
