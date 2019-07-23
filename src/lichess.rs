@@ -1,12 +1,9 @@
 use reqwest::header::*;
 use reqwest::{Client, Method, Request, Url};
 use serde::Deserialize;
-use serde_json::Value;
 
 #[derive(Deserialize)]
 pub struct OAuthToken {
-    scopes: String,
-    expires_in: i32,
     token_type: String,
     pub access_token: String,
 }
@@ -26,12 +23,12 @@ pub fn get_user(
     token: &OAuthToken,
     http_client: &Client,
     lichess_domain: &str,
-) -> Result<User, Box<std::error::Error>> {
+) -> Result<User, Box<dyn std::error::Error>> {
     let mut req = Request::new(
         Method::GET,
         Url::parse(&format!("https://{}/api/account", lichess_domain))?,
     );
-    let mut headers = req.headers_mut();
+    let headers = req.headers_mut();
     headers.insert(ACCEPT, "application/json".parse()?);
     headers.insert(
         AUTHORIZATION,
@@ -48,12 +45,12 @@ pub fn oauth_token_from_code(
     client_id: &str,
     client_secret: &str,
     redirect_uri: &str,
-) -> Result<OAuthToken, Box<std::error::Error>> {
+) -> Result<OAuthToken, Box<dyn std::error::Error>> {
     let mut req = Request::new(
         Method::POST,
         Url::parse(&format!("https://oauth.{}/oauth", lichess_domain))?,
     );
-    let mut body = req.body_mut();
+    let body = req.body_mut();
     *body = Some(
         format!(
             "grant_type=authorization_code&code={}&redirect_uri={}&client_id={}&client_secret={}",
@@ -61,7 +58,7 @@ pub fn oauth_token_from_code(
         )
         .into(),
     );
-    let mut headers = req.headers_mut();
+    let headers = req.headers_mut();
     headers.insert(ACCEPT, "application/json".parse()?);
     headers.insert(CONTENT_TYPE, "application/x-www-form-urlencoded".parse()?);
     let response: OAuthToken = http_client.execute(req)?.json()?;
@@ -73,12 +70,12 @@ fn try_join_team(
     token: &str,
     lichess_domain: &str,
     team_id: &str,
-) -> Result<bool, Box<std::error::Error>> {
+) -> Result<bool, Box<dyn std::error::Error>> {
     let mut req = Request::new(
         Method::POST,
         Url::parse(&format!("https://{}/team/{}/join", lichess_domain, team_id))?,
     );
-    let mut headers = req.headers_mut();
+    let headers = req.headers_mut();
     headers.insert(ACCEPT, "application/json".parse()?);
     headers.insert(AUTHORIZATION, format!("Bearer {}", token).parse()?);
     let response: MaybeOk = http_client.execute(req)?.json()?;

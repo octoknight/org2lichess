@@ -1,4 +1,3 @@
-use reqwest::header::*;
 use reqwest::{Client, Method, Request, Url};
 
 pub fn verify_user(
@@ -7,8 +6,8 @@ pub fn verify_user(
     member_password: &str,
     azolve_url: &str,
     azolve_password: &str,
-) -> Result<bool, Box<std::error::Error>> {
-    let mut req = Request::new(
+) -> Result<bool, Box<dyn std::error::Error>> {
+    let req = Request::new(
         Method::GET,
         Url::parse(&format!("{}?userId=AzolveAPI&password={}&clientReference=ECF&objectName=Cus_SSO&objectType=sp&meters=MID|{};{}",
         azolve_url,

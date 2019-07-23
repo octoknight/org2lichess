@@ -10,13 +10,10 @@ extern crate rocket_contrib;
 extern crate serde;
 extern crate toml;
 
-use chrono::{Datelike, Utc};
 use rand::Rng;
-use reqwest::header::*;
-use reqwest::{Method, Request, Url};
-use rocket::http::{Cookies, Status};
+use rocket::http::Cookies;
 use rocket::request::Form;
-use rocket::response::{Redirect, Responder};
+use rocket::response::Redirect;
 use rocket_contrib::templates::Template;
 use std::collections::HashMap;
 use std::fs;
@@ -53,7 +50,7 @@ fn auth(state: rocket::State<state::State>) -> Redirect {
 
 #[get("/oauth_redirect?<code>&<state>")]
 fn oauth_redirect(
-    mut cookies: Cookies<'_>,
+    cookies: Cookies<'_>,
     code: String,
     state: String,
     rocket_state: rocket::State<state::State>,
@@ -173,7 +170,7 @@ fn link_memberships(
     form: Option<Form<EcfInfo>>,
     session: Session,
     state: rocket::State<state::State>,
-) -> Result<Result<Redirect, Template>, Box<std::error::Error>> {
+) -> Result<Result<Redirect, Template>, Box<dyn std::error::Error>> {
     if !can_use_form(&session, &state)? {
         return Ok(Ok(Redirect::to(uri!(index))));
     }
@@ -250,7 +247,7 @@ fn link_memberships(
 }
 
 #[post("/logout")]
-fn logout(mut cookies: Cookies<'_>) -> Template {
+fn logout(cookies: Cookies<'_>) -> Template {
     session::remove_session(cookies);
     Template::render("redirect", &empty_context())
 }
