@@ -1,4 +1,4 @@
-#![feature(proc_macro_hygiene, decl_macro)]
+#![feature(proc_macro_hygiene, decl_macro, custom_attribute)]
 
 #[macro_use]
 extern crate rocket;
@@ -14,7 +14,6 @@ use rocket::http::{Cookies, Status};
 use rocket::request::Form;
 use rocket::response::Redirect;
 use rocket_contrib::templates::Template;
-use std::collections::HashMap;
 use std::fs;
 use std::sync::RwLock;
 
@@ -26,15 +25,13 @@ mod lichess;
 mod randstr;
 mod session;
 mod state;
+mod tempctx;
 
 use config::Config;
 use db::EcfDbClient;
 use randstr::random_oauth_state;
 use session::Session;
-
-fn empty_context() -> HashMap<u8, u8> {
-    HashMap::new()
-}
+use tempctx::*;
 
 #[get("/", rank = 2)]
 fn index() -> Template {
@@ -98,29 +95,19 @@ fn manage_authed(
     session: Session,
     state: rocket::State<state::State>,
 ) -> Result<Template, postgres::Error> {
-    let mut ctx: HashMap<&str, &str> = HashMap::new();
+    let logged_in = make_logged_in_context(&session, &state.config);
 
     match state.db.get_member_for_lichess_id(&session.lichess_id)? {
-        Some(member) => {
-            ctx.insert("lichess", &session.lichess_username);
-            let memid_str = &member.ecf_id.to_string();
-            ctx.insert("ecf", &memid_str);
-            let exp_str = &member.exp_year.to_string();
-            ctx.insert("exp", &exp_str);
-            ctx.insert(
-                "can_renew",
-                if can_use_form(&session, &state)? {
-                    "true"
-                } else {
-                    "false"
-                },
-            );
-            Ok(Template::render("linked", &ctx))
-        }
-        None => {
-            ctx.insert("lichess", &session.lichess_username);
-            Ok(Template::render("notlinked", &ctx))
-        }
+        Some(member) => Ok(Template::render(
+            "linked",
+            make_linked_context(
+                logged_in,
+                member.ecf_id,
+                member.exp_year,
+                can_use_form(&session, &state)?,
+            ),
+        )),
+        None => Ok(Template::render("notlinked", logged_in)),
     }
 }
 
@@ -145,11 +132,10 @@ fn show_form(
     if !can_use_form(&session, &state)? {
         Ok(Err(Redirect::to(uri!(index))))
     } else {
-        let mut ctx: HashMap<&str, &str> = HashMap::new();
-        ctx.insert("lichess", &session.lichess_username);
-        ctx.insert("error", "");
-
-        Ok(Ok(Template::render("form", &ctx)))
+        Ok(Ok(Template::render(
+            "form",
+            make_error_context(make_logged_in_context(&session, &state.config), ""),
+        )))
     }
 }
 
@@ -187,14 +173,15 @@ fn link_memberships(
         return Ok(Ok(Redirect::to(uri!(index))));
     }
 
-    let mut ctx: HashMap<&str, &str> = HashMap::new();
-    ctx.insert("lichess", &session.lichess_username);
+    let logged_in = make_logged_in_context(&session, &state.config);
 
     Ok(match form {
         Some(ecf_info) => {
             if ecf_info.ecf_id < 0 {
-                ctx.insert("error", "Invalid ECF member ID.");
-                Err(Template::render("form", &ctx))
+                Err(Template::render(
+                    "form",
+                    make_error_context(logged_in, "Invalid ECF member ID."),
+                ))
             } else {
                 match azolve::verify_user(
                     &state.http_client,
@@ -223,38 +210,25 @@ fn link_memberships(
                                 )?;
                                 Ok(Redirect::to(uri!(index)))
                             } else {
-                                ctx.insert(
-                                    "error",
-                                    "This ECF membership is already linked to a Lichess account.",
-                                );
-                                Err(Template::render("form", &ctx))
+                                Err(Template::render("form", make_error_context(logged_in, "This ECF membership is already linked to a Lichess account.")))
                             }
                         } else {
-                            ctx.insert(
-                                "error",
-                                "Could not add you to the Lichess team, please try again later.",
-                            );
-                            Err(Template::render("form", &ctx))
+                            Err(Template::render("form", make_error_context(logged_in, "Could not add you to the Lichess team, please try again later.")))
                         }
                     }
                     Ok(false) => {
-                        ctx.insert(
-                                "error",
-                                "Membership verification failed, please check your member ID and password",
-                            );
-                        Err(Template::render("form", &ctx))
+                        Err(Template::render("form", make_error_context(logged_in, "Membership verification failed, please check your member ID and password.")))
                     }
                     _ => {
-                        ctx.insert("error", "At the moment we're unable to verify your membership. Please try again later.");
-                        Err(Template::render("form", &ctx))
+                        Err(Template::render("form", make_error_context(logged_in, "At the moment we're unable to verify your membership. Please try again later.")))
                     }
                 }
             }
         }
-        None => {
-            ctx.insert("error", "Invalid form data.");
-            Err(Template::render("form", &ctx))
-        }
+        None => Err(Template::render(
+            "form",
+            make_error_context(logged_in, "Invalid form data."),
+        )),
     })
 }
 
@@ -267,6 +241,24 @@ fn try_link_unauthenticated() -> Redirect {
 fn logout(cookies: Cookies<'_>) -> Template {
     session::remove_session(cookies);
     Template::render("redirect", &empty_context())
+}
+
+#[get("/admin")]
+fn admin(
+    session: Session,
+    state: rocket::State<state::State>,
+) -> Result<Result<Template, Status>, postgres::Error> {
+    let logged_in = make_logged_in_context(&session, &state.config);
+
+    if logged_in.admin {
+        let members = state.db.get_members()?;
+        Ok(Ok(Template::render(
+            "admin",
+            make_admin_context(logged_in, members),
+        )))
+    } else {
+        Ok(Err(Status::Forbidden))
+    }
 }
 
 fn main() {
@@ -295,7 +287,8 @@ fn main() {
                 form_redirect_index,
                 link_memberships,
                 logout,
-                try_link_unauthenticated
+                try_link_unauthenticated,
+                admin
             ],
         )
         .launch();

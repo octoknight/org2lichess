@@ -1,6 +1,8 @@
 use postgres::{Client, NoTls};
+use serde::Serialize;
 use std::sync::RwLock;
 
+#[derive(Serialize)]
 pub struct Membership {
     pub ecf_id: i32,
     pub lichess_id: String,
@@ -26,6 +28,7 @@ pub trait EcfDbClient {
     fn lichess_member_has_ecf(&self, lichess_id: &str) -> Result<bool, postgres::Error>;
     fn remove_membership(&self, ecf_id: i32) -> Result<u64, postgres::Error>;
     fn update_expiry(&self, ecf_id: i32, new_exp_year: i32) -> Result<u64, postgres::Error>;
+    fn get_members(&self) -> Result<Vec<Membership>, postgres::Error>;
 }
 
 fn extract_one_membership(rows: &Vec<postgres::row::Row>) -> Option<Membership> {
@@ -93,5 +96,21 @@ impl EcfDbClient for RwLock<Client> {
             "UPDATE memberships SET exp = $1 WHERE ecfid = $2",
             &[&ecf_id, &new_exp_year],
         )
+    }
+
+    fn get_members(&self) -> Result<Vec<Membership>, postgres::Error> {
+        let mut members: Vec<Membership> = vec![];
+        for row in self
+            .write()
+            .unwrap()
+            .query("SELECT ecfid, lichessid, exp FROM memberships", &[])?
+        {
+            members.push(Membership {
+                ecf_id: row.get(0),
+                lichess_id: row.get(1),
+                exp_year: row.get(2),
+            });
+        }
+        Ok(members)
     }
 }

@@ -10,4 +10,5 @@ pub struct Config {
     pub azolve_api: String,
     pub azolve_api_pwd: String,
     pub team_id: String,
+    pub lichess_admin_id: String,
 }
