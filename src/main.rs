@@ -54,7 +54,7 @@ fn oauth_redirect(
     code: String,
     state: String,
     rocket_state: rocket::State<state::State>,
-) -> Template {
+) -> Result<Template, Box<dyn std::error::Error>> {
     let token = lichess::oauth_token_from_code(
         &code,
         &rocket_state.http_client,
@@ -77,8 +77,8 @@ fn oauth_redirect(
             lichess_username: user.username,
             oauth_token: token.access_token,
         },
-    );
-    Template::render("redirect", &empty_context())
+    )?;
+    Ok(Template::render("redirect", &empty_context()))
 }
 
 #[get("/")]
