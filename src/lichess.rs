@@ -85,3 +85,34 @@ fn try_join_team(
 pub fn join_team(http_client: &Client, token: &str, lichess_domain: &str, team_id: &str) -> bool {
     try_join_team(http_client, token, lichess_domain, team_id).unwrap_or(false)
 }
+
+fn try_kick_from_team(
+    http_client: &Client,
+    token: &str,
+    lichess_domain: &str,
+    team_id: &str,
+    user_id: &str,
+) -> Result<bool, Box<dyn std::error::Error>> {
+    let mut req = Request::new(
+        Method::POST,
+        Url::parse(&format!(
+            "https://{}/team/{}/kick/{}",
+            lichess_domain, team_id, user_id
+        ))?,
+    );
+    let headers = req.headers_mut();
+    headers.insert(ACCEPT, "application/json".parse()?);
+    headers.insert(AUTHORIZATION, format!("Bearer {}", token).parse()?);
+    let response: MaybeOk = http_client.execute(req)?.json()?;
+    Ok(response.ok)
+}
+
+pub fn kick_from_team(
+    http_client: &Client,
+    token: &str,
+    lichess_domain: &str,
+    team_id: &str,
+    user_id: &str,
+) -> bool {
+    try_kick_from_team(http_client, token, lichess_domain, team_id, user_id).unwrap_or(false)
+}

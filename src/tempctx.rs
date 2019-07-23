@@ -51,10 +51,7 @@ pub fn make_error_context(logged_in: LoggedInContext, error: &str) -> LoggedInWi
     }
 }
 
-pub fn make_admin_context(
-    logged_in: LoggedInContext,
-    members: Vec<Membership>,
-) -> AdminContext {
+pub fn make_admin_context(logged_in: LoggedInContext, members: Vec<Membership>) -> AdminContext {
     AdminContext { logged_in, members }
 }
 

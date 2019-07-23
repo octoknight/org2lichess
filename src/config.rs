@@ -11,4 +11,6 @@ pub struct Config {
     pub azolve_api_pwd: String,
     pub team_id: String,
     pub lichess_admin_id: String,
+    pub personal_api_token: String,
+    pub expiry_check_interval_seconds: u64,
 }

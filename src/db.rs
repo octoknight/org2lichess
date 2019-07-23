@@ -29,6 +29,10 @@ pub trait EcfDbClient {
     fn remove_membership(&self, ecf_id: i32) -> Result<u64, postgres::Error>;
     fn update_expiry(&self, ecf_id: i32, new_exp_year: i32) -> Result<u64, postgres::Error>;
     fn get_members(&self) -> Result<Vec<Membership>, postgres::Error>;
+    fn get_members_with_at_most_expiry_year(
+        &self,
+        year: i32,
+    ) -> Result<Vec<Membership>, postgres::Error>;
 }
 
 fn extract_one_membership(rows: &Vec<postgres::row::Row>) -> Option<Membership> {
@@ -105,6 +109,24 @@ impl EcfDbClient for RwLock<Client> {
             .unwrap()
             .query("SELECT ecfid, lichessid, exp FROM memberships", &[])?
         {
+            members.push(Membership {
+                ecf_id: row.get(0),
+                lichess_id: row.get(1),
+                exp_year: row.get(2),
+            });
+        }
+        Ok(members)
+    }
+
+    fn get_members_with_at_most_expiry_year(
+        &self,
+        year: i32,
+    ) -> Result<Vec<Membership>, postgres::Error> {
+        let mut members: Vec<Membership> = vec![];
+        for row in self.write().unwrap().query(
+            "SELECT ecfid, lichessid, exp FROM memberships WHERE exp <= $1",
+            &[&year],
+        )? {
             members.push(Membership {
                 ecf_id: row.get(0),
                 lichess_id: row.get(1),

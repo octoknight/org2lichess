@@ -21,11 +21,13 @@ mod azolve;
 mod config;
 mod db;
 mod ecf;
+mod expwatch;
 mod lichess;
 mod randstr;
 mod session;
 mod state;
 mod tempctx;
+mod textlog;
 
 use config::Config;
 use db::EcfDbClient;
@@ -264,6 +266,14 @@ fn admin(
 fn main() {
     let config_contents = fs::read_to_string("Config.toml").expect("Cannot read Config.toml");
     let config: Config = toml::from_str(&config_contents).expect("Invalid Config.toml");
+
+    expwatch::launch(
+        config.connection_string.clone(),
+        config.lichess.clone(),
+        config.team_id.clone(),
+        config.personal_api_token.clone(),
+        config.expiry_check_interval_seconds,
+    );
 
     let http_client = reqwest::Client::new();
 
