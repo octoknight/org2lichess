@@ -11,7 +11,7 @@
   <body>
   <div class="d-flex flex-column full-height">
     <div class="container">
-      <img class="img-fluid ecf-logo" src="https://www.englishchess.org.uk/wp-content/uploads/2018/07/ECF-Banner-Version-1.2.jpg">
+      <a href="/"><img class="img-fluid ecf-logo" src="https://www.englishchess.org.uk/wp-content/uploads/2018/07/ECF-Banner-Version-1.2.jpg"></a>
     </div>
     <div class="jumbotron d-flex">
       <div class="container">
