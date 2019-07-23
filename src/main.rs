@@ -266,8 +266,10 @@ fn main() {
     let config_contents = fs::read_to_string("Config.toml").expect("Cannot read Config.toml");
     let config: Config = toml::from_str(&config_contents).expect("Invalid Config.toml");
 
+    let db_client1 = RwLock::new(db::connect(&config.connection_string).unwrap());
+
     expwatch::launch(
-        config.connection_string.clone(),
+        db_client1,
         config.lichess.clone(),
         config.team_id.clone(),
         config.personal_api_token.clone(),
@@ -276,14 +278,14 @@ fn main() {
 
     let http_client = reqwest::Client::new();
 
-    let db_client = RwLock::new(db::connect(&config.connection_string).unwrap());
+    let db_client2 = RwLock::new(db::connect(&config.connection_string).unwrap());
 
     rocket::ignite()
         .attach(Template::fairing())
         .manage(state::State {
             config,
             http_client,
-            db: db_client,
+            db: db_client2,
         })
         .mount(
             "/",

@@ -1,4 +1,3 @@
-use crate::db;
 use crate::db::{EcfDbClient, Membership};
 use crate::ecf;
 use crate::lichess;
@@ -96,7 +95,7 @@ fn find_and_clean_expired(
 }
 
 pub fn launch(
-    connection_string: String,
+    db_client: RwLock<postgres::Client>,
     lichess_domain: String,
     team_id: String,
     api_token: String,
@@ -105,7 +104,6 @@ pub fn launch(
     thread::spawn(move || {
         let http_client = reqwest::Client::new();
 
-        let db_client = RwLock::new(db::connect(&connection_string).unwrap());
         loop {
             println!("Finding and cleaning expired members...");
 
