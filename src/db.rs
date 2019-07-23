@@ -1,6 +1,7 @@
+use crate::types::*;
 use postgres::{Client, NoTls};
 use serde::Serialize;
-use std::sync::RwLock;
+use std::sync::{RwLock, RwLockWriteGuard};
 
 #[derive(Serialize)]
 pub struct Membership {
@@ -14,24 +15,19 @@ pub fn connect(connection_string: &str) -> Result<Client, postgres::Error> {
 }
 
 pub trait EcfDbClient {
+    fn w(&self) -> Result<RwLockWriteGuard<'_, Client>, ErrorBox>;
     fn register_member(
         &self,
         ecf_id: i32,
         lichess_id: &str,
         exp_year: i32,
-    ) -> Result<u64, postgres::Error>;
-    fn get_member_for_ecf_id(&self, ecf_id: i32) -> Result<Option<Membership>, postgres::Error>;
-    fn get_member_for_lichess_id(
-        &self,
-        lichess_id: &str,
-    ) -> Result<Option<Membership>, postgres::Error>;
-    fn lichess_member_has_ecf(&self, lichess_id: &str) -> Result<bool, postgres::Error>;
-    fn remove_membership(&self, ecf_id: i32) -> Result<u64, postgres::Error>;
-    fn get_members(&self) -> Result<Vec<Membership>, postgres::Error>;
-    fn get_members_with_at_most_expiry_year(
-        &self,
-        year: i32,
-    ) -> Result<Vec<Membership>, postgres::Error>;
+    ) -> Result<u64, ErrorBox>;
+    fn get_member_for_ecf_id(&self, ecf_id: i32) -> Result<Option<Membership>, ErrorBox>;
+    fn get_member_for_lichess_id(&self, lichess_id: &str) -> Result<Option<Membership>, ErrorBox>;
+    fn lichess_member_has_ecf(&self, lichess_id: &str) -> Result<bool, ErrorBox>;
+    fn remove_membership(&self, ecf_id: i32) -> Result<u64, ErrorBox>;
+    fn get_members(&self) -> Result<Vec<Membership>, ErrorBox>;
+    fn get_members_with_at_most_expiry_year(&self, year: i32) -> Result<Vec<Membership>, ErrorBox>;
 }
 
 fn extract_one_membership(rows: &Vec<postgres::row::Row>) -> Option<Membership> {
@@ -45,60 +41,64 @@ fn extract_one_membership(rows: &Vec<postgres::row::Row>) -> Option<Membership> 
     })
 }
 
-// TODO: [technical debt] replace .unwrap() by ? and still make it all compile
 impl EcfDbClient for RwLock<Client> {
+    fn w(&self) -> Result<RwLockWriteGuard<'_, Client>, ErrorBox> {
+        match self.write() {
+            Ok(client) => Ok(client),
+            _ => Err(".write() failed".into()),
+        }
+    }
+
     fn register_member(
         &self,
         ecf_id: i32,
         lichess_id: &str,
         exp_year: i32,
-    ) -> Result<u64, postgres::Error> {
-        let mut client = self.write().unwrap();
+    ) -> Result<u64, ErrorBox> {
+        let mut client = self.w()?;
         client.execute(
             "DELETE FROM memberships WHERE ecfid = $1 OR lichessid = $2",
             &[&ecf_id, &lichess_id],
         )?;
-        client.execute(
+        let result = client.execute(
             "INSERT INTO memberships (ecfid, lichessid, exp) VALUES ($1, $2, $3);",
             &[&ecf_id, &lichess_id, &exp_year],
-        )
+        )?;
+        Ok(result)
     }
 
-    fn get_member_for_ecf_id(&self, ecf_id: i32) -> Result<Option<Membership>, postgres::Error> {
-        let rows = self.write().unwrap().query(
+    fn get_member_for_ecf_id(&self, ecf_id: i32) -> Result<Option<Membership>, ErrorBox> {
+        let rows = self.w()?.query(
             "SELECT ecfid, lichessid, exp FROM memberships WHERE ecfid = $1",
             &[&ecf_id],
         )?;
         Ok(extract_one_membership(&rows))
     }
 
-    fn get_member_for_lichess_id(
-        &self,
-        lichess_id: &str,
-    ) -> Result<Option<Membership>, postgres::Error> {
-        let rows = self.write().unwrap().query(
+    fn get_member_for_lichess_id(&self, lichess_id: &str) -> Result<Option<Membership>, ErrorBox> {
+        let rows = self.w()?.query(
             "SELECT ecfid, lichessid, exp FROM memberships WHERE lichessid = $1",
             &[&lichess_id],
         )?;
         Ok(extract_one_membership(&rows))
     }
 
-    fn lichess_member_has_ecf(&self, lichess_id: &str) -> Result<bool, postgres::Error> {
+    fn lichess_member_has_ecf(&self, lichess_id: &str) -> Result<bool, ErrorBox> {
         self.get_member_for_lichess_id(lichess_id)
             .map(|member| member.is_some())
     }
 
-    fn remove_membership(&self, ecf_id: i32) -> Result<u64, postgres::Error> {
-        self.write()
-            .unwrap()
-            .execute("DELETE FROM memberships WHERE ecfid = $1", &[&ecf_id])
+    fn remove_membership(&self, ecf_id: i32) -> Result<u64, ErrorBox> {
+        let result = self
+            .w()?
+            .execute("DELETE FROM memberships WHERE ecfid = $1", &[&ecf_id])?;
+        Ok(result)
     }
 
-    fn get_members(&self) -> Result<Vec<Membership>, postgres::Error> {
+    fn get_members(&self) -> Result<Vec<Membership>, ErrorBox> {
         let mut members: Vec<Membership> = vec![];
         for row in self
-            .write()
-            .unwrap()
+            .w()?
             .query("SELECT ecfid, lichessid, exp FROM memberships", &[])?
         {
             members.push(Membership {
@@ -110,12 +110,9 @@ impl EcfDbClient for RwLock<Client> {
         Ok(members)
     }
 
-    fn get_members_with_at_most_expiry_year(
-        &self,
-        year: i32,
-    ) -> Result<Vec<Membership>, postgres::Error> {
+    fn get_members_with_at_most_expiry_year(&self, year: i32) -> Result<Vec<Membership>, ErrorBox> {
         let mut members: Vec<Membership> = vec![];
-        for row in self.write().unwrap().query(
+        for row in self.w()?.query(
             "SELECT ecfid, lichessid, exp FROM memberships WHERE exp <= $1",
             &[&year],
         )? {

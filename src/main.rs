@@ -28,12 +28,14 @@ mod session;
 mod state;
 mod tempctx;
 mod textlog;
+mod types;
 
 use config::Config;
 use db::EcfDbClient;
 use randstr::random_oauth_state;
 use session::Session;
 use tempctx::*;
+use types::*;
 
 #[get("/", rank = 2)]
 fn index() -> Template {
@@ -96,7 +98,7 @@ fn oauth_redirect(
 fn manage_authed(
     session: Session,
     state: rocket::State<state::State>,
-) -> Result<Template, postgres::Error> {
+) -> Result<Template, ErrorBox> {
     let logged_in = make_logged_in_context(&session, &state.config);
 
     match state.db.get_member_for_lichess_id(&session.lichess_id)? {
@@ -113,10 +115,7 @@ fn manage_authed(
     }
 }
 
-fn can_use_form(
-    session: &Session,
-    state: &rocket::State<state::State>,
-) -> Result<bool, postgres::Error> {
+fn can_use_form(session: &Session, state: &rocket::State<state::State>) -> Result<bool, ErrorBox> {
     state
         .db
         .get_member_for_lichess_id(&session.lichess_id)
@@ -130,7 +129,7 @@ fn can_use_form(
 fn show_form(
     session: Session,
     state: rocket::State<state::State>,
-) -> Result<Result<Template, Redirect>, postgres::Error> {
+) -> Result<Result<Template, Redirect>, ErrorBox> {
     if !can_use_form(&session, &state)? {
         Ok(Err(Redirect::to(uri!(index))))
     } else {
@@ -150,7 +149,7 @@ fn ecf_id_unused(
     ecf_id: i32,
     session: &Session,
     state: &rocket::State<state::State>,
-) -> Result<bool, postgres::Error> {
+) -> Result<bool, ErrorBox> {
     match state.db.get_member_for_ecf_id(ecf_id)? {
         Some(member) => Ok(&session.lichess_id == &member.lichess_id),
         None => Ok(true),
@@ -249,7 +248,7 @@ fn logout(cookies: Cookies<'_>) -> Template {
 fn admin(
     session: Session,
     state: rocket::State<state::State>,
-) -> Result<Result<Template, Status>, postgres::Error> {
+) -> Result<Result<Template, Status>, ErrorBox> {
     let logged_in = make_logged_in_context(&session, &state.config);
 
     if logged_in.admin {

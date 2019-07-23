@@ -3,12 +3,13 @@ use crate::db::{EcfDbClient, Membership};
 use crate::ecf;
 use crate::lichess;
 use crate::textlog;
+use crate::types::*;
 use postgres;
 use reqwest;
 use std::sync::RwLock;
 use std::thread;
 
-fn find_expired_members(db: &RwLock<postgres::Client>) -> Result<Vec<Membership>, postgres::Error> {
+fn find_expired_members(db: &RwLock<postgres::Client>) -> Result<Vec<Membership>, ErrorBox> {
     let current_year = ecf::current_london_year();
 
     let year = if ecf::is_past_renewal(current_year) {
