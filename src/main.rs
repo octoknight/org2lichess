@@ -43,10 +43,7 @@ fn index() -> Template {
 }
 
 #[get("/auth")]
-fn auth(
-    config: State<Config>,
-    cookies: Cookies<'_>,
-) -> Result<Redirect, Box<dyn std::error::Error>> {
+fn auth(config: State<Config>, cookies: Cookies<'_>) -> Result<Redirect, ErrorBox> {
     let oauth_state = random_oauth_state()?;
     session::set_oauth_state_cookie(cookies, &oauth_state);
 
@@ -63,7 +60,7 @@ fn oauth_redirect(
     state: String,
     config: State<Config>,
     http_client: State<reqwest::Client>,
-) -> Result<Result<Template, Status>, Box<dyn std::error::Error>> {
+) -> Result<Result<Template, Status>, ErrorBox> {
     match session::pop_oauth_state(&mut cookies).map(|v| &v == &state) {
         Some(true) => {
             let token = lichess::oauth_token_from_code(
@@ -163,7 +160,7 @@ fn link_memberships(
     config: State<Config>,
     db: State<Db>,
     http_client: State<reqwest::Client>,
-) -> Result<Result<Redirect, Template>, Box<dyn std::error::Error>> {
+) -> Result<Result<Redirect, Template>, ErrorBox> {
     if !can_use_form(&session, &db)? {
         return Ok(Ok(Redirect::to(uri!(index))));
     }

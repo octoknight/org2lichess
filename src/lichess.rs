@@ -1,3 +1,4 @@
+use crate::types::*;
 use reqwest::header::*;
 use reqwest::{Client, Method, Request, Url};
 use serde::Deserialize;
@@ -23,7 +24,7 @@ pub fn get_user(
     token: &OAuthToken,
     http_client: &Client,
     lichess_domain: &str,
-) -> Result<User, Box<dyn std::error::Error>> {
+) -> Result<User, ErrorBox> {
     let mut req = Request::new(
         Method::GET,
         Url::parse(&format!("https://{}/api/account", lichess_domain))?,
@@ -45,7 +46,7 @@ pub fn oauth_token_from_code(
     client_id: &str,
     client_secret: &str,
     redirect_uri: &str,
-) -> Result<OAuthToken, Box<dyn std::error::Error>> {
+) -> Result<OAuthToken, ErrorBox> {
     let mut req = Request::new(
         Method::POST,
         Url::parse(&format!("https://oauth.{}/oauth", lichess_domain))?,
@@ -70,7 +71,7 @@ fn try_join_team(
     token: &str,
     lichess_domain: &str,
     team_id: &str,
-) -> Result<bool, Box<dyn std::error::Error>> {
+) -> Result<bool, ErrorBox> {
     let mut req = Request::new(
         Method::POST,
         Url::parse(&format!("https://{}/team/{}/join", lichess_domain, team_id))?,
@@ -92,7 +93,7 @@ fn try_kick_from_team(
     lichess_domain: &str,
     team_id: &str,
     user_id: &str,
-) -> Result<bool, Box<dyn std::error::Error>> {
+) -> Result<bool, ErrorBox> {
     let mut req = Request::new(
         Method::POST,
         Url::parse(&format!(
