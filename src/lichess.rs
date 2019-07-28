@@ -20,21 +20,30 @@ pub struct MaybeOk {
     pub ok: bool,
 }
 
+fn create_request(
+    method: Method,
+    url: String,
+    accept: &str,
+    authorization: String,
+) -> Result<Request, ErrorBox> {
+    let mut req = Request::new(method, Url::parse(&url)?);
+    let headers = req.headers_mut();
+    headers.insert(ACCEPT, accept.parse()?);
+    headers.insert(AUTHORIZATION, authorization.parse()?);
+    Ok(req)
+}
+
 pub fn get_user(
     token: &OAuthToken,
     http_client: &Client,
     lichess_domain: &str,
 ) -> Result<User, ErrorBox> {
-    let mut req = Request::new(
+    let req = create_request(
         Method::GET,
-        Url::parse(&format!("https://{}/api/account", lichess_domain))?,
-    );
-    let headers = req.headers_mut();
-    headers.insert(ACCEPT, "application/json".parse()?);
-    headers.insert(
-        AUTHORIZATION,
-        format!("{} {}", token.token_type, token.access_token).parse()?,
-    );
+        format!("https://{}/api/account", lichess_domain),
+        "application/json",
+        format!("{} {}", token.token_type, token.access_token),
+    )?;
     let response: User = http_client.execute(req)?.json()?;
     Ok(response)
 }
@@ -72,13 +81,12 @@ fn try_join_team(
     lichess_domain: &str,
     team_id: &str,
 ) -> Result<bool, ErrorBox> {
-    let mut req = Request::new(
+    let req = create_request(
         Method::POST,
-        Url::parse(&format!("https://{}/team/{}/join", lichess_domain, team_id))?,
-    );
-    let headers = req.headers_mut();
-    headers.insert(ACCEPT, "application/json".parse()?);
-    headers.insert(AUTHORIZATION, format!("Bearer {}", token).parse()?);
+        format!("https://{}/team/{}/join", lichess_domain, team_id),
+        "application/json",
+        format!("Bearer {}", token),
+    )?;
     let response: MaybeOk = http_client.execute(req)?.json()?;
     Ok(response.ok)
 }
@@ -94,16 +102,15 @@ fn try_kick_from_team(
     team_id: &str,
     user_id: &str,
 ) -> Result<bool, ErrorBox> {
-    let mut req = Request::new(
+    let req = create_request(
         Method::POST,
-        Url::parse(&format!(
+        format!(
             "https://{}/team/{}/kick/{}",
             lichess_domain, team_id, user_id
-        ))?,
-    );
-    let headers = req.headers_mut();
-    headers.insert(ACCEPT, "application/json".parse()?);
-    headers.insert(AUTHORIZATION, format!("Bearer {}", token).parse()?);
+        ),
+        "application/json",
+        format!("Bearer {}", token),
+    )?;
     let response: MaybeOk = http_client.execute(req)?.json()?;
     Ok(response.ok)
 }
