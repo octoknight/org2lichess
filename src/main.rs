@@ -13,6 +13,7 @@ extern crate toml;
 use rocket::http::{Cookies, Status};
 use rocket::request::Form;
 use rocket::response::Redirect;
+use rocket::State;
 use rocket_contrib::templates::Template;
 use std::fs;
 use std::sync::RwLock;
@@ -25,7 +26,6 @@ mod expwatch;
 mod lichess;
 mod randstr;
 mod session;
-mod state;
 mod tempctx;
 mod textlog;
 mod types;
@@ -44,14 +44,14 @@ fn index() -> Template {
 
 #[get("/auth")]
 fn auth(
-    state: rocket::State<state::State>,
+    config: State<Config>,
     cookies: Cookies<'_>,
 ) -> Result<Redirect, Box<dyn std::error::Error>> {
     let oauth_state = random_oauth_state()?;
     session::set_oauth_state_cookie(cookies, &oauth_state);
 
     let url = format!("https://oauth.{}/oauth/authorize?response_type=code&client_id={}&redirect_uri={}/oauth_redirect&scope=team:write&state={}",
-        state.config.lichess.domain, state.config.lichess.client_id, state.config.server.url, oauth_state);
+        config.lichess.domain, config.lichess.client_id, config.server.url, oauth_state);
 
     Ok(Redirect::to(url))
 }
@@ -61,25 +61,21 @@ fn oauth_redirect(
     mut cookies: Cookies<'_>,
     code: String,
     state: String,
-    rocket_state: rocket::State<state::State>,
+    config: State<Config>,
+    http_client: State<reqwest::Client>,
 ) -> Result<Result<Template, Status>, Box<dyn std::error::Error>> {
     match session::pop_oauth_state(&mut cookies).map(|v| &v == &state) {
         Some(true) => {
             let token = lichess::oauth_token_from_code(
                 &code,
-                &rocket_state.http_client,
-                &rocket_state.config.lichess.domain,
-                &rocket_state.config.lichess.client_id,
-                &rocket_state.config.lichess.client_secret,
-                &format!("{}/oauth_redirect", rocket_state.config.server.url),
+                &http_client,
+                &config.lichess.domain,
+                &config.lichess.client_id,
+                &config.lichess.client_secret,
+                &format!("{}/oauth_redirect", config.server.url),
             )
             .unwrap();
-            let user = lichess::get_user(
-                &token,
-                &rocket_state.http_client,
-                &rocket_state.config.lichess.domain,
-            )
-            .unwrap();
+            let user = lichess::get_user(&token, &http_client, &config.lichess.domain).unwrap();
             session::set_session(
                 cookies,
                 Session {
@@ -97,28 +93,27 @@ fn oauth_redirect(
 #[get("/")]
 fn manage_authed(
     session: Session,
-    state: rocket::State<state::State>,
+    config: State<Config>,
+    db: State<Db>,
 ) -> Result<Template, ErrorBox> {
-    let logged_in = make_logged_in_context(&session, &state.config);
+    let logged_in = make_logged_in_context(&session, &config);
 
-    match state.db.get_member_for_lichess_id(&session.lichess_id)? {
+    match db.get_member_for_lichess_id(&session.lichess_id)? {
         Some(member) => Ok(Template::render(
             "linked",
             make_linked_context(
                 logged_in,
                 member.ecf_id,
                 member.exp_year,
-                can_use_form(&session, &state)?,
+                can_use_form(&session, &db)?,
             ),
         )),
         None => Ok(Template::render("notlinked", logged_in)),
     }
 }
 
-fn can_use_form(session: &Session, state: &rocket::State<state::State>) -> Result<bool, ErrorBox> {
-    state
-        .db
-        .get_member_for_lichess_id(&session.lichess_id)
+fn can_use_form(session: &Session, db: &State<Db>) -> Result<bool, ErrorBox> {
+    db.get_member_for_lichess_id(&session.lichess_id)
         .map(|maybe_member| match maybe_member {
             Some(member) => ecf::is_past_expiry(member.exp_year),
             None => true,
@@ -128,14 +123,15 @@ fn can_use_form(session: &Session, state: &rocket::State<state::State>) -> Resul
 #[get("/link")]
 fn show_form(
     session: Session,
-    state: rocket::State<state::State>,
+    config: State<Config>,
+    db: State<Db>,
 ) -> Result<Result<Template, Redirect>, ErrorBox> {
-    if !can_use_form(&session, &state)? {
+    if !can_use_form(&session, &db)? {
         Ok(Err(Redirect::to(uri!(index))))
     } else {
         Ok(Ok(Template::render(
             "form",
-            make_error_context(make_logged_in_context(&session, &state.config), ""),
+            make_error_context(make_logged_in_context(&session, &config), ""),
         )))
     }
 }
@@ -145,12 +141,8 @@ fn form_redirect_index() -> Redirect {
     Redirect::to(uri!(index))
 }
 
-fn ecf_id_unused(
-    ecf_id: i32,
-    session: &Session,
-    state: &rocket::State<state::State>,
-) -> Result<bool, ErrorBox> {
-    match state.db.get_member_for_ecf_id(ecf_id)? {
+fn ecf_id_unused(ecf_id: i32, session: &Session, db: &State<Db>) -> Result<bool, ErrorBox> {
+    match db.get_member_for_ecf_id(ecf_id)? {
         Some(member) => Ok(&session.lichess_id == &member.lichess_id),
         None => Ok(true),
     }
@@ -168,13 +160,15 @@ struct EcfInfo {
 fn link_memberships(
     form: Option<Form<EcfInfo>>,
     session: Session,
-    state: rocket::State<state::State>,
+    config: State<Config>,
+    db: State<Db>,
+    http_client: State<reqwest::Client>,
 ) -> Result<Result<Redirect, Template>, Box<dyn std::error::Error>> {
-    if !can_use_form(&session, &state)? {
+    if !can_use_form(&session, &db)? {
         return Ok(Ok(Redirect::to(uri!(index))));
     }
 
-    let logged_in = make_logged_in_context(&session, &state.config);
+    let logged_in = make_logged_in_context(&session, &config);
 
     Ok(match form {
         Some(ecf_info) => {
@@ -185,21 +179,21 @@ fn link_memberships(
                 ))
             } else {
                 match azolve::verify_user(
-                    &state.http_client,
+                    &http_client,
                     ecf_info.ecf_id,
                     &ecf_info.ecf_password,
-                    &state.config.azolve.api,
-                    &state.config.azolve.api_pwd,
+                    &config.azolve.api,
+                    &config.azolve.api_pwd,
                 ) {
                     Ok(true) => {
                         if lichess::join_team(
-                            &state.http_client,
+                            &http_client,
                             &session.oauth_token,
-                            &state.config.lichess.domain,
-                            &state.config.lichess.team_id,
+                            &config.lichess.domain,
+                            &config.lichess.team_id,
                         ) {
-                            if ecf_id_unused(ecf_info.ecf_id, &session, &state)? {
-                                state.db.register_member(
+                            if ecf_id_unused(ecf_info.ecf_id, &session, &db)? {
+                                db.register_member(
                                     ecf_info.ecf_id,
                                     &session.lichess_id,
                                     ecf::current_london_year()
@@ -247,12 +241,13 @@ fn logout(cookies: Cookies<'_>) -> Template {
 #[get("/admin")]
 fn admin(
     session: Session,
-    state: rocket::State<state::State>,
+    config: State<Config>,
+    db: State<Db>,
 ) -> Result<Result<Template, Status>, ErrorBox> {
-    let logged_in = make_logged_in_context(&session, &state.config);
+    let logged_in = make_logged_in_context(&session, &config);
 
     if logged_in.admin {
-        let members = state.db.get_members()?;
+        let members = db.get_members()?;
         Ok(Ok(Template::render(
             "admin",
             make_admin_context(logged_in, members),
@@ -282,11 +277,9 @@ fn main() {
 
     rocket::ignite()
         .attach(Template::fairing())
-        .manage(state::State {
-            config,
-            http_client,
-            db: db_client2,
-        })
+        .manage(config)
+        .manage(http_client)
+        .manage(db_client2)
         .mount(
             "/",
             routes![
