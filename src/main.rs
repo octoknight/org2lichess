@@ -51,7 +51,7 @@ fn auth(
     session::set_oauth_state_cookie(cookies, &oauth_state);
 
     let url = format!("https://oauth.{}/oauth/authorize?response_type=code&client_id={}&redirect_uri={}/oauth_redirect&scope=team:write&state={}",
-        state.config.lichess, state.config.client_id, state.config.url, oauth_state);
+        state.config.lichess.domain, state.config.lichess.client_id, state.config.server.url, oauth_state);
 
     Ok(Redirect::to(url))
 }
@@ -68,16 +68,16 @@ fn oauth_redirect(
             let token = lichess::oauth_token_from_code(
                 &code,
                 &rocket_state.http_client,
-                &rocket_state.config.lichess,
-                &rocket_state.config.client_id,
-                &rocket_state.config.client_secret,
-                &format!("{}/oauth_redirect", rocket_state.config.url),
+                &rocket_state.config.lichess.domain,
+                &rocket_state.config.lichess.client_id,
+                &rocket_state.config.lichess.client_secret,
+                &format!("{}/oauth_redirect", rocket_state.config.server.url),
             )
             .unwrap();
             let user = lichess::get_user(
                 &token,
                 &rocket_state.http_client,
-                &rocket_state.config.lichess,
+                &rocket_state.config.lichess.domain,
             )
             .unwrap();
             session::set_session(
@@ -188,15 +188,15 @@ fn link_memberships(
                     &state.http_client,
                     ecf_info.ecf_id,
                     &ecf_info.ecf_password,
-                    &state.config.azolve_api,
-                    &state.config.azolve_api_pwd,
+                    &state.config.azolve.api,
+                    &state.config.azolve.api_pwd,
                 ) {
                     Ok(true) => {
                         if lichess::join_team(
                             &state.http_client,
                             &session.oauth_token,
-                            &state.config.lichess,
-                            &state.config.team_id,
+                            &state.config.lichess.domain,
+                            &state.config.lichess.team_id,
                         ) {
                             if ecf_id_unused(ecf_info.ecf_id, &session, &state)? {
                                 state.db.register_member(
@@ -266,19 +266,19 @@ fn main() {
     let config_contents = fs::read_to_string("Config.toml").expect("Cannot read Config.toml");
     let config: Config = toml::from_str(&config_contents).expect("Invalid Config.toml");
 
-    let db_client1 = RwLock::new(db::connect(&config.connection_string).unwrap());
+    let db_client1 = RwLock::new(db::connect(&config.server.db_connection_string).unwrap());
 
     expwatch::launch(
         db_client1,
-        config.lichess.clone(),
-        config.team_id.clone(),
-        config.personal_api_token.clone(),
-        config.expiry_check_interval_seconds,
+        config.lichess.domain.clone(),
+        config.lichess.team_id.clone(),
+        config.lichess.personal_api_token.clone(),
+        config.server.expiry_check_interval_seconds,
     );
 
     let http_client = reqwest::Client::new();
 
-    let db_client2 = RwLock::new(db::connect(&config.connection_string).unwrap());
+    let db_client2 = RwLock::new(db::connect(&config.server.db_connection_string).unwrap());
 
     rocket::ignite()
         .attach(Template::fairing())

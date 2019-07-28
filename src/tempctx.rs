@@ -40,7 +40,7 @@ pub fn empty_context() -> HashMap<u8, u8> {
 pub fn make_logged_in_context(session: &Session, config: &Config) -> LoggedInContext {
     LoggedInContext {
         lichess: String::from(&session.lichess_username),
-        admin: &session.lichess_id == &config.lichess_admin_id,
+        admin: &session.lichess_id == &config.lichess.team_admin,
     }
 }
 
