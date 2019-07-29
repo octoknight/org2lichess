@@ -21,7 +21,7 @@ pub struct LoggedInWithErrorContext {
 pub struct LinkedContext {
     #[serde(flatten)]
     pub logged_in: LoggedInContext,
-    pub ecf: i32,
+    pub ecf: String,
     pub exp: i32,
     pub can_renew: bool,
 }
@@ -57,7 +57,7 @@ pub fn make_admin_context(logged_in: LoggedInContext, members: Vec<Membership>) 
 
 pub fn make_linked_context(
     logged_in: LoggedInContext,
-    ecf_id: i32,
+    ecf_id: String,
     exp_year: i32,
     can_renew: bool,
 ) -> LinkedContext {

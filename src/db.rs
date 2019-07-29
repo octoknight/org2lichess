@@ -5,7 +5,7 @@ use std::sync::{RwLock, RwLockWriteGuard};
 
 #[derive(Serialize)]
 pub struct Membership {
-    pub ecf_id: i32,
+    pub ecf_id: String,
     pub lichess_id: String,
     pub exp_year: i32,
 }
@@ -18,14 +18,14 @@ pub trait EcfDbClient {
     fn w(&self) -> Result<RwLockWriteGuard<'_, Client>, ErrorBox>;
     fn register_member(
         &self,
-        ecf_id: i32,
+        ecf_id: &str,
         lichess_id: &str,
         exp_year: i32,
     ) -> Result<u64, ErrorBox>;
-    fn get_member_for_ecf_id(&self, ecf_id: i32) -> Result<Option<Membership>, ErrorBox>;
+    fn get_member_for_ecf_id(&self, ecf_id: &str) -> Result<Option<Membership>, ErrorBox>;
     fn get_member_for_lichess_id(&self, lichess_id: &str) -> Result<Option<Membership>, ErrorBox>;
     fn lichess_member_has_ecf(&self, lichess_id: &str) -> Result<bool, ErrorBox>;
-    fn remove_membership(&self, ecf_id: i32) -> Result<u64, ErrorBox>;
+    fn remove_membership(&self, ecf_id: &str) -> Result<u64, ErrorBox>;
     fn get_members(&self) -> Result<Vec<Membership>, ErrorBox>;
     fn get_members_with_at_most_expiry_year(&self, year: i32) -> Result<Vec<Membership>, ErrorBox>;
 }
@@ -51,7 +51,7 @@ impl EcfDbClient for RwLock<Client> {
 
     fn register_member(
         &self,
-        ecf_id: i32,
+        ecf_id: &str,
         lichess_id: &str,
         exp_year: i32,
     ) -> Result<u64, ErrorBox> {
@@ -67,7 +67,7 @@ impl EcfDbClient for RwLock<Client> {
         Ok(result)
     }
 
-    fn get_member_for_ecf_id(&self, ecf_id: i32) -> Result<Option<Membership>, ErrorBox> {
+    fn get_member_for_ecf_id(&self, ecf_id: &str) -> Result<Option<Membership>, ErrorBox> {
         let rows = self.w()?.query(
             "SELECT ecfid, lichessid, exp FROM memberships WHERE ecfid = $1",
             &[&ecf_id],
@@ -88,7 +88,7 @@ impl EcfDbClient for RwLock<Client> {
             .map(|member| member.is_some())
     }
 
-    fn remove_membership(&self, ecf_id: i32) -> Result<u64, ErrorBox> {
+    fn remove_membership(&self, ecf_id: &str) -> Result<u64, ErrorBox> {
         let result = self
             .w()?
             .execute("DELETE FROM memberships WHERE ecfid = $1", &[&ecf_id])?;

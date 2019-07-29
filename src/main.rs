@@ -138,8 +138,8 @@ fn form_redirect_index() -> Redirect {
     Redirect::to(uri!(index))
 }
 
-fn ecf_id_unused(ecf_id: i32, session: &Session, db: &State<Db>) -> Result<bool, ErrorBox> {
-    match db.get_member_for_ecf_id(ecf_id)? {
+fn ecf_id_unused(ecf_id: &str, session: &Session, db: &State<Db>) -> Result<bool, ErrorBox> {
+    match db.get_member_for_ecf_id(&ecf_id)? {
         Some(member) => Ok(&session.lichess_id == &member.lichess_id),
         None => Ok(true),
     }
@@ -148,7 +148,7 @@ fn ecf_id_unused(ecf_id: i32, session: &Session, db: &State<Db>) -> Result<bool,
 #[derive(FromForm)]
 struct EcfInfo {
     #[form(field = "ecf-id")]
-    ecf_id: i32,
+    ecf_id: String,
     #[form(field = "ecf-password")]
     ecf_password: String,
 }
@@ -169,51 +169,44 @@ fn link_memberships(
 
     Ok(match form {
         Some(ecf_info) => {
-            if ecf_info.ecf_id < 0 {
-                Err(Template::render(
-                    "form",
-                    make_error_context(logged_in, "Invalid ECF member ID."),
-                ))
-            } else {
-                match azolve::verify_user(
+            match azolve::verify_user(
                     &http_client,
-                    ecf_info.ecf_id,
+                    &ecf_info.ecf_id,
                     &ecf_info.ecf_password,
                     &config.azolve.api,
                     &config.azolve.api_pwd,
                 ) {
-                    Ok(true) => {
-                        if lichess::join_team(
-                            &http_client,
-                            &session.oauth_token,
-                            &config.lichess.domain,
-                            &config.lichess.team_id,
-                        ) {
-                            if ecf_id_unused(ecf_info.ecf_id, &session, &db)? {
-                                db.register_member(
-                                    ecf_info.ecf_id,
-                                    &session.lichess_id,
-                                    ecf::current_london_year()
-                                        + (if ecf::is_past_expiry_this_year() {
-                                            1
-                                        } else {
-                                            0
-                                        }),
-                                )?;
-                                Ok(Redirect::to(uri!(index)))
-                            } else {
-                                Err(Template::render("form", make_error_context(logged_in, "This ECF membership is already linked to a Lichess account.")))
-                            }
+                Ok(true) => {
+                    if lichess::join_team(
+                        &http_client,
+                        &session.oauth_token,
+                        &config.lichess.domain,
+                        &config.lichess.team_id,
+                    ) {
+                        if ecf_id_unused(&ecf_info.ecf_id, &session, &db)? {
+                            db.register_member(
+                                &ecf_info.ecf_id,
+                                &session.lichess_id,
+                                ecf::current_london_year()
+                                    + (if ecf::is_past_expiry_this_year() {
+                                        1
+                                    } else {
+                                        0
+                                    }),
+                            )?;
+                            Ok(Redirect::to(uri!(index)))
                         } else {
-                            Err(Template::render("form", make_error_context(logged_in, "Could not add you to the Lichess team, please try again later.")))
+                            Err(Template::render("form", make_error_context(logged_in, "This ECF membership is already linked to a Lichess account.")))
                         }
+                    } else {
+                        Err(Template::render("form", make_error_context(logged_in, "Could not add you to the Lichess team, please try again later.")))
                     }
-                    Ok(false) => {
-                        Err(Template::render("form", make_error_context(logged_in, "Membership verification failed, please check your member ID and password.")))
-                    }
-                    _ => {
-                        Err(Template::render("form", make_error_context(logged_in, "At the moment we're unable to verify your membership. Please try again later.")))
-                    }
+                }
+                Ok(false) => {
+                    Err(Template::render("form", make_error_context(logged_in, "Membership verification failed, please check your member ID and password.")))
+                }
+                _ => {
+                    Err(Template::render("form", make_error_context(logged_in, "At the moment we're unable to verify your membership. Please try again later.")))
                 }
             }
         }

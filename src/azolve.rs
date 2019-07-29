@@ -3,7 +3,7 @@ use reqwest::{Client, Method, Request, Url};
 
 pub fn verify_user(
     http_client: &Client,
-    member_id: i32,
+    member_id: &str,
     member_password: &str,
     azolve_url: &str,
     azolve_password: &str,
