@@ -1,5 +1,5 @@
 [package]
-name = "ecf-lichess-bridge"
+name = "org-lichess-bridge"
 version = "0.1.0"
 authors = ["Thomas Daniels <programfox@hotmail.be>"]
 edition = "2018"
