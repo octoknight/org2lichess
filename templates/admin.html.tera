@@ -15,7 +15,7 @@ Overview of {{ org.short_name }} membership IDs of Lichess accounts:
   <tbody>
     {% for member in members %}
     <tr>
-      <td scope="col">{{ member.ecf_id }}</td>
+      <td scope="col">{{ member.org_id }}</td>
       <td scope="col">{{ member.lichess_id }}</td>
       <td scope="col">{{ member.exp_year }}</td>
     </tr>
