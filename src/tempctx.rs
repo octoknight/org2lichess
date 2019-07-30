@@ -1,4 +1,4 @@
-use crate::config::{Config, OrgConfig};
+use crate::config::{Config, ExpiryConfig, OrgConfig};
 use crate::db::Membership;
 use crate::session::Session;
 use serde::Serialize;
@@ -27,8 +27,12 @@ pub struct LinkedContext<'a> {
     #[serde(flatten)]
     pub logged_in: LoggedInContext<'a>,
     pub ecf: String,
-    pub exp: i32,
+    pub exp_year: i32,
     pub can_renew: bool,
+    pub exp_month: String,
+    pub exp_day: u32,
+    pub renew_month: String,
+    pub renew_day: u32,
 }
 
 #[derive(Serialize)]
@@ -67,16 +71,39 @@ pub fn make_admin_context<'a>(
     AdminContext { logged_in, members }
 }
 
+fn month_to_string(month: u32) -> String {
+    String::from(match month {
+        1 => "January",
+        2 => "February",
+        3 => "March",
+        4 => "April",
+        5 => "May",
+        6 => "June",
+        7 => "July",
+        8 => "August",
+        9 => "September",
+        10 => "October",
+        11 => "November",
+        12 => "December",
+        _ => "ERROR",
+    })
+}
+
 pub fn make_linked_context<'a>(
     logged_in: LoggedInContext<'a>,
     ecf_id: String,
     exp_year: i32,
     can_renew: bool,
+    exp_config: &ExpiryConfig,
 ) -> LinkedContext<'a> {
     LinkedContext {
         logged_in,
         ecf: ecf_id,
-        exp: exp_year,
+        exp_year: exp_year,
         can_renew,
+        exp_month: month_to_string(exp_config.membership_month),
+        exp_day: exp_config.membership_day,
+        renew_month: month_to_string(exp_config.renewal_month),
+        renew_day: exp_config.renewal_day,
     }
 }

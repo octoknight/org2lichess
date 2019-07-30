@@ -103,6 +103,7 @@ fn manage_authed(
                 member.ecf_id,
                 member.exp_year,
                 can_use_form(&session, &config, &db)?,
+                &config.expiry,
             ),
         )),
         None => Ok(Template::render("notlinked", logged_in)),
