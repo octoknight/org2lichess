@@ -38,8 +38,8 @@ use tempctx::*;
 use types::*;
 
 #[get("/", rank = 2)]
-fn index() -> Template {
-    Template::render("index", &empty_context())
+fn index(config: State<Config>) -> Template {
+    Template::render("index", &empty_context(&config))
 }
 
 #[get("/auth")]
@@ -81,7 +81,7 @@ fn oauth_redirect(
                     oauth_token: token.access_token,
                 },
             )?;
-            Ok(Ok(Template::render("redirect", &empty_context())))
+            Ok(Ok(Template::render("redirect", &empty_context(&config))))
         }
         _ => Ok(Err(Status::BadRequest)),
     }
@@ -183,7 +183,7 @@ fn link_memberships(
                         &http_client,
                         &session.oauth_token,
                         &config.lichess.domain,
-                        &config.lichess.team_id,
+                        &config.org.team_id,
                     ) {
                         if ecf_id_unused(&ecf_info.ecf_id, &session, &db)? {
                             db.register_member(
@@ -225,9 +225,9 @@ fn try_link_unauthenticated() -> Redirect {
 }
 
 #[post("/logout")]
-fn logout(cookies: Cookies<'_>) -> Template {
+fn logout(cookies: Cookies<'_>, config: State<Config>) -> Template {
     session::remove_session(cookies);
-    Template::render("redirect", &empty_context())
+    Template::render("redirect", &empty_context(&config))
 }
 
 #[get("/admin")]
@@ -258,7 +258,7 @@ fn main() {
     expwatch::launch(
         db_client1,
         config.lichess.domain.clone(),
-        config.lichess.team_id.clone(),
+        config.org.team_id.clone(),
         config.lichess.personal_api_token.clone(),
         config.server.expiry_check_interval_seconds,
     );

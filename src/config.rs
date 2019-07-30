@@ -1,10 +1,20 @@
-use serde::Deserialize;
+use serde::{Serialize, Deserialize};
 
 #[derive(Deserialize)]
 pub struct Config {
+    pub org: OrgConfig,
     pub server: ServerConfig,
     pub lichess: LichessConfig,
     pub azolve: AzolveConfig,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct OrgConfig {
+    pub long_name: String,
+    pub short_name: String,
+    pub icon: String,
+    pub image: String,
+    pub team_id: String,
 }
 
 #[derive(Deserialize)]
@@ -19,7 +29,6 @@ pub struct LichessConfig {
     pub domain: String,
     pub client_id: String,
     pub client_secret: String,
-    pub team_id: String,
     pub team_admin: String,
     pub personal_api_token: String,
 }

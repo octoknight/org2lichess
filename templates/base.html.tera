@@ -2,18 +2,17 @@
 <html>
   <head>
     <meta charset="utf-8">
-    <title>{% block title %}{% endblock title %} | ECF <-> Lichess</title>
+    <title>{% block title %}{% endblock title %} | {{ org.short_name }} <-> Lichess</title>
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
     <link rel="stylesheet" href="/assets/styles/main.css">
-    <link rel="icon" href="https://www.englishchess.org.uk/wp-content/uploads/2018/07/cropped-little-square-logo-32x32.jpg" sizes="32x32" />
-    <link rel="icon" href="https://www.englishchess.org.uk/wp-content/uploads/2018/07/cropped-little-square-logo-192x192.jpg" sizes="192x192" />
+    <link rel="icon" href="{{ org.icon }}" />
     {% block add_to_head %}{% endblock add_to_head %}
   </head>
   <body>
   <div class="d-flex flex-column full-height">
     <div class="container">
-      <a href="/"><img class="img-fluid ecf-logo" src="https://www.englishchess.org.uk/wp-content/uploads/2018/07/ECF-Banner-Version-1.2.jpg"></a>
+      <a href="/"><img class="img-fluid ecf-logo" src="{{ org.image }}"></a>
     </div>
     <div class="jumbotron d-flex">
       <div class="container">
