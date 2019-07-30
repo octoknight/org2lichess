@@ -21,9 +21,9 @@ use std::sync::RwLock;
 mod azolve;
 mod config;
 mod db;
-mod ecf;
 mod expwatch;
 mod lichess;
+mod org;
 mod randstr;
 mod session;
 mod tempctx;
@@ -31,15 +31,15 @@ mod textlog;
 mod types;
 
 use config::Config;
-use db::EcfDbClient;
+use db::OrgDbClient;
 use randstr::random_oauth_state;
 use session::Session;
 use tempctx::*;
 use types::*;
 
 #[get("/", rank = 2)]
-fn index() -> Template {
-    Template::render("index", &empty_context())
+fn index(config: State<Config>) -> Template {
+    Template::render("index", &empty_context(&config))
 }
 
 #[get("/auth")]
@@ -81,7 +81,7 @@ fn oauth_redirect(
                     oauth_token: token.access_token,
                 },
             )?;
-            Ok(Ok(Template::render("redirect", &empty_context())))
+            Ok(Ok(Template::render("redirect", &empty_context(&config))))
         }
         _ => Ok(Err(Status::BadRequest)),
     }
@@ -100,19 +100,30 @@ fn manage_authed(
             "linked",
             make_linked_context(
                 logged_in,
-                member.ecf_id,
+                member.org_id,
                 member.exp_year,
-                can_use_form(&session, &db)?,
+                can_use_form(&session, &config, &db)?,
+                &config.expiry,
             ),
         )),
         None => Ok(Template::render("notlinked", logged_in)),
     }
 }
 
-fn can_use_form(session: &Session, db: &State<Db>) -> Result<bool, ErrorBox> {
+fn can_use_form(
+    session: &Session,
+    config: &State<Config>,
+    db: &State<Db>,
+) -> Result<bool, ErrorBox> {
+    let timezone = org::timezone_from_string(&config.org.timezone)?;
     db.get_member_for_lichess_id(&session.lichess_id)
         .map(|maybe_member| match maybe_member {
-            Some(member) => ecf::is_past_expiry(member.exp_year),
+            Some(member) => org::is_past_expiry(
+                member.exp_year,
+                timezone,
+                config.expiry.membership_month,
+                config.expiry.membership_day,
+            ),
             None => true,
         })
 }
@@ -123,7 +134,7 @@ fn show_form(
     config: State<Config>,
     db: State<Db>,
 ) -> Result<Result<Template, Redirect>, ErrorBox> {
-    if !can_use_form(&session, &db)? {
+    if !can_use_form(&session, &config, &db)? {
         Ok(Err(Redirect::to(uri!(index))))
     } else {
         Ok(Ok(Template::render(
@@ -138,41 +149,43 @@ fn form_redirect_index() -> Redirect {
     Redirect::to(uri!(index))
 }
 
-fn ecf_id_unused(ecf_id: &str, session: &Session, db: &State<Db>) -> Result<bool, ErrorBox> {
-    match db.get_member_for_ecf_id(&ecf_id)? {
+fn org_id_unused(org_id: &str, session: &Session, db: &State<Db>) -> Result<bool, ErrorBox> {
+    match db.get_member_for_org_id(&org_id)? {
         Some(member) => Ok(&session.lichess_id == &member.lichess_id),
         None => Ok(true),
     }
 }
 
 #[derive(FromForm)]
-struct EcfInfo {
-    #[form(field = "ecf-id")]
-    ecf_id: String,
-    #[form(field = "ecf-password")]
-    ecf_password: String,
+struct OrgInfo {
+    #[form(field = "org-id")]
+    org_id: String,
+    #[form(field = "org-password")]
+    org_password: String,
 }
 
 #[post("/link", data = "<form>")]
 fn link_memberships(
-    form: Option<Form<EcfInfo>>,
+    form: Option<Form<OrgInfo>>,
     session: Session,
     config: State<Config>,
     db: State<Db>,
     http_client: State<reqwest::Client>,
 ) -> Result<Result<Redirect, Template>, ErrorBox> {
-    if !can_use_form(&session, &db)? {
+    if !can_use_form(&session, &config, &db)? {
         return Ok(Ok(Redirect::to(uri!(index))));
     }
 
     let logged_in = make_logged_in_context(&session, &config);
 
+    let timezone = org::timezone_from_string(&config.org.timezone)?;
+
     Ok(match form {
-        Some(ecf_info) => {
+        Some(org_info) => {
             match azolve::verify_user(
                     &http_client,
-                    &ecf_info.ecf_id,
-                    &ecf_info.ecf_password,
+                    &org_info.org_id,
+                    &org_info.org_password,
                     &config.azolve.api_stage1,
                     &config.azolve.api_stage2,
                     &config.azolve.api_pwd,
@@ -183,14 +196,14 @@ fn link_memberships(
                         &http_client,
                         &session.oauth_token,
                         &config.lichess.domain,
-                        &config.lichess.team_id,
+                        &config.org.team_id,
                     ) {
-                        if ecf_id_unused(&ecf_info.ecf_id, &session, &db)? {
+                        if org_id_unused(&org_info.org_id, &session, &db)? {
                             db.register_member(
-                                &ecf_info.ecf_id,
+                                &org_info.org_id,
                                 &session.lichess_id,
-                                ecf::current_london_year()
-                                    + (if ecf::is_past_expiry_this_year() {
+                                org::current_year(timezone)
+                                    + (if org::is_past_expiry_this_year(timezone, config.expiry.membership_month, config.expiry.membership_day) {
                                         1
                                     } else {
                                         0
@@ -198,7 +211,7 @@ fn link_memberships(
                             )?;
                             Ok(Redirect::to(uri!(index)))
                         } else {
-                            Err(Template::render("form", make_error_context(logged_in, "This ECF membership is already linked to a Lichess account.")))
+                            Err(Template::render("form", make_error_context(logged_in, "This membership is already linked to a Lichess account.")))
                         }
                     } else {
                         Err(Template::render("form", make_error_context(logged_in, "Could not add you to the Lichess team, please try again later.")))
@@ -225,9 +238,9 @@ fn try_link_unauthenticated() -> Redirect {
 }
 
 #[post("/logout")]
-fn logout(cookies: Cookies<'_>) -> Template {
+fn logout(cookies: Cookies<'_>, config: State<Config>) -> Template {
     session::remove_session(cookies);
-    Template::render("redirect", &empty_context())
+    Template::render("redirect", &empty_context(&config))
 }
 
 #[get("/admin")]
@@ -258,9 +271,12 @@ fn main() {
     expwatch::launch(
         db_client1,
         config.lichess.domain.clone(),
-        config.lichess.team_id.clone(),
+        config.org.team_id.clone(),
         config.lichess.personal_api_token.clone(),
         config.server.expiry_check_interval_seconds,
+        org::timezone_from_string(&config.org.timezone).unwrap(),
+        config.expiry.renewal_month,
+        config.expiry.renewal_day,
     );
 
     let http_client = reqwest::Client::new();

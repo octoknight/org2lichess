@@ -1,17 +1,23 @@
-use crate::db::{EcfDbClient, Membership};
-use crate::ecf;
+use crate::db::{OrgDbClient, Membership};
 use crate::lichess;
+use crate::org;
 use crate::textlog;
 use crate::types::*;
+use chrono_tz::Tz;
 use postgres;
 use reqwest;
 use std::sync::RwLock;
 use std::thread;
 
-fn find_expired_members(db: &RwLock<postgres::Client>) -> Result<Vec<Membership>, ErrorBox> {
-    let current_year = ecf::current_london_year();
+fn find_expired_members(
+    db: &RwLock<postgres::Client>,
+    timezone: Tz,
+    month: u32,
+    day: u32,
+) -> Result<Vec<Membership>, ErrorBox> {
+    let current_year = org::current_year(timezone);
 
-    let year = if ecf::is_past_renewal(current_year) {
+    let year = if org::is_past_renewal(current_year, timezone, month, day) {
         current_year
     } else {
         current_year - 1
@@ -37,7 +43,7 @@ fn clean_expired_members(
             &team_id,
             &member.lichess_id,
         ) {
-            match db.remove_membership(&member.ecf_id) {
+            match db.remove_membership(&member.org_id) {
                 Ok(_) => {
                     textlog::append_line_to(
                         "kick.log",
@@ -75,8 +81,11 @@ fn find_and_clean_expired(
     lichess_domain: &str,
     team_id: &str,
     api_token: &str,
+    timezone: Tz,
+    renewal_month: u32,
+    renewal_day: u32,
 ) {
-    match find_expired_members(&db) {
+    match find_expired_members(&db, timezone, renewal_month, renewal_day) {
         Ok(expired) => clean_expired_members(
             expired,
             delay_ms,
@@ -100,6 +109,9 @@ pub fn launch(
     team_id: String,
     api_token: String,
     interval_seconds: u64,
+    timezone: Tz,
+    renewal_month: u32,
+    renewal_day: u32,
 ) {
     thread::spawn(move || {
         let http_client = reqwest::Client::new();
@@ -114,6 +126,9 @@ pub fn launch(
                 &lichess_domain,
                 &team_id,
                 &api_token,
+                timezone,
+                renewal_month,
+                renewal_day,
             );
 
             thread::sleep(std::time::Duration::from_secs(interval_seconds));

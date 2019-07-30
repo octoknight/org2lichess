@@ -1,23 +1,23 @@
 {% extends "base" %}
 
-{% block title %}Link ECF and Lichess memberships{% endblock title %}
+{% block title %}Link {{ org.short_name }} and Lichess memberships{% endblock title %}
 
 {% block content %}
 {% if error != "" %}
 <div class="alert alert-danger">{{ error }}</div>
 {% endif %}
 <p>
-Use the below form to link your Lichess account {{ lichess }} with your ECF membership.
+Use the below form to link your Lichess account {{ lichess }} with your {{ org.short_name }} membership.
 </p>
 <form method="POST" action="/link">
   <div class="form-group">
-    <label for="ecf-id">ECF member ID</label>
-    <input type="text" class="form-control" placeholder="000000" name="ecf-id" id="ecf-id">
+    <label for="org-id">{{ org.short_name }} member ID</label>
+    <input type="text" class="form-control" placeholder="000000" name="org-id" id="org-id">
   </div>
   <div class="form-group">
-    <label for="ecf-password">Password</label>
-    <input type="password" class="form-control" name="ecf-password" id="ecf-password">
-    <small>Use the password that the ECF has given you for this form.</small>
+    <label for="org-password">Password</label>
+    <input type="password" class="form-control" name="org-password" id="org-password">
+    <small>Use the password that the {{ org.short_name }} has given you for this form.</small>
   </div>
   <button class="btn btn-primary" type="submit">Link memberships</button>
 </form>

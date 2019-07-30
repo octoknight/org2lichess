@@ -3,11 +3,11 @@
 {% block title %}Admin page{% endblock title %}
 
 {% block content2 %}
-Overview of ECF membership IDs of Lichess accounts:
+Overview of {{ org.short_name }} membership IDs of Lichess accounts:
 <table class="table">
   <thead>
     <tr>
-      <th scope="col">ECF member ID</th>
+      <th scope="col">{{ org.short_name }} member ID</th>
       <th scope="col">Lichess ID</th>
       <th scope="col">Expiry</th>
     </tr>
@@ -15,7 +15,7 @@ Overview of ECF membership IDs of Lichess accounts:
   <tbody>
     {% for member in members %}
     <tr>
-      <td scope="col">{{ member.ecf_id }}</td>
+      <td scope="col">{{ member.org_id }}</td>
       <td scope="col">{{ member.lichess_id }}</td>
       <td scope="col">{{ member.exp_year }}</td>
     </tr>

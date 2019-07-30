@@ -5,9 +5,9 @@
 {% block content %}
 <div class="d-flex align-items-center flex-column">
   <div class="mb-5">
-    This website allows you to link your English Chess Federation membership with Lichess.
-    Doing so will automatically make you a member of the <a href="https://lichess.org/team/english-chess-players">ECF team on Lichess</a>,
-    so you can play in ECF tournaments on Lichess.
+    This website allows you to link your {{ org.long_name }} membership with Lichess.
+    Doing so will automatically make you a member of the <a href="https://lichess.org/team/{{ org.team_id }}">{{ org.short_name }} team on Lichess</a>,
+    so you can play in {{ org.short_name }} tournaments on Lichess.
   </div>
   <div>
     <form method="GET" action="/auth">
