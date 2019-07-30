@@ -26,7 +26,7 @@ pub struct LoggedInWithErrorContext<'a> {
 pub struct LinkedContext<'a> {
     #[serde(flatten)]
     pub logged_in: LoggedInContext<'a>,
-    pub ecf: String,
+    pub org_id: String,
     pub exp_year: i32,
     pub can_renew: bool,
     pub exp_month: String,
@@ -91,14 +91,14 @@ fn month_to_string(month: u32) -> String {
 
 pub fn make_linked_context<'a>(
     logged_in: LoggedInContext<'a>,
-    ecf_id: String,
+    org_id: String,
     exp_year: i32,
     can_renew: bool,
     exp_config: &ExpiryConfig,
 ) -> LinkedContext<'a> {
     LinkedContext {
         logged_in,
-        ecf: ecf_id,
+        org_id: org_id,
         exp_year: exp_year,
         can_renew,
         exp_month: month_to_string(exp_config.membership_month),
