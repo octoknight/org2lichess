@@ -1,8 +1,9 @@
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize)]
 pub struct Config {
     pub org: OrgConfig,
+    pub expiry: ExpiryConfig,
     pub server: ServerConfig,
     pub lichess: LichessConfig,
     pub azolve: AzolveConfig,
@@ -15,6 +16,15 @@ pub struct OrgConfig {
     pub icon: String,
     pub image: String,
     pub team_id: String,
+    pub timezone: String,
+}
+
+#[derive(Deserialize)]
+pub struct ExpiryConfig {
+    pub membership_month: u32,
+    pub membership_day: u32,
+    pub renewal_month: u32,
+    pub renewal_day: u32,
 }
 
 #[derive(Deserialize)]

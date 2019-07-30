@@ -5,7 +5,7 @@ use serde::Serialize;
 
 #[derive(Serialize)]
 pub struct BaseContext<'a> {
-    pub org: &'a OrgConfig
+    pub org: &'a OrgConfig,
 }
 
 #[derive(Serialize)]
@@ -39,9 +39,7 @@ pub struct AdminContext<'a> {
 }
 
 pub fn empty_context(config: &Config) -> BaseContext {
-    BaseContext {
-        org: &config.org, 
-    }
+    BaseContext { org: &config.org }
 }
 
 pub fn make_logged_in_context<'a>(session: &Session, config: &'a Config) -> LoggedInContext<'a> {
@@ -52,14 +50,20 @@ pub fn make_logged_in_context<'a>(session: &Session, config: &'a Config) -> Logg
     }
 }
 
-pub fn make_error_context<'a>(logged_in: LoggedInContext<'a>, error: &str) -> LoggedInWithErrorContext<'a> {
+pub fn make_error_context<'a>(
+    logged_in: LoggedInContext<'a>,
+    error: &str,
+) -> LoggedInWithErrorContext<'a> {
     LoggedInWithErrorContext {
         logged_in,
         error: error.to_string(),
     }
 }
 
-pub fn make_admin_context<'a>(logged_in: LoggedInContext<'a>, members: Vec<Membership>) -> AdminContext<'a> {
+pub fn make_admin_context<'a>(
+    logged_in: LoggedInContext<'a>,
+    members: Vec<Membership>,
+) -> AdminContext<'a> {
     AdminContext { logged_in, members }
 }
 

@@ -29,7 +29,10 @@ pub fn verify_user(
         query.append_pair("objectType", "sp");
         query.append_pair(
             "parameters",
-            &format!("MID|ME{};Password|{};Token|{}", member_id, enc_password, azolve_token),
+            &format!(
+                "MID|ME{};Password|{};Token|{}",
+                member_id, enc_password, azolve_token
+            ),
         );
     }
     println!("{}", url);

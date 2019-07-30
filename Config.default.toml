@@ -4,6 +4,13 @@ short_name = "Organisation short name here (e.g. ECF)"
 icon = "favicon URL"
 image = "banner image URL"
 team_id = "Lichess team ID"
+timezone = "Organisation timezone (e.g. Europe/London)"
+
+[expiry]
+membership_month = 8
+membership_day = 31 # The last month and day on which an organisation's membership is valid
+renewal_month = 9
+renewal_day = 14 # The last month and day on which a member can renew their membership before being kicked from the Lichess team
 
 [server]
 url = "http://localhost:55555"
