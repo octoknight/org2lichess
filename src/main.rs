@@ -149,24 +149,24 @@ fn form_redirect_index() -> Redirect {
     Redirect::to(uri!(index))
 }
 
-fn ecf_id_unused(ecf_id: &str, session: &Session, db: &State<Db>) -> Result<bool, ErrorBox> {
-    match db.get_member_for_org_id(&ecf_id)? {
+fn org_id_unused(org_id: &str, session: &Session, db: &State<Db>) -> Result<bool, ErrorBox> {
+    match db.get_member_for_org_id(&org_id)? {
         Some(member) => Ok(&session.lichess_id == &member.lichess_id),
         None => Ok(true),
     }
 }
 
 #[derive(FromForm)]
-struct EcfInfo {
-    #[form(field = "ecf-id")]
-    ecf_id: String,
-    #[form(field = "ecf-password")]
-    ecf_password: String,
+struct OrgInfo {
+    #[form(field = "org-id")]
+    org_id: String,
+    #[form(field = "org-password")]
+    org_password: String,
 }
 
 #[post("/link", data = "<form>")]
 fn link_memberships(
-    form: Option<Form<EcfInfo>>,
+    form: Option<Form<OrgInfo>>,
     session: Session,
     config: State<Config>,
     db: State<Db>,
@@ -181,11 +181,11 @@ fn link_memberships(
     let timezone = org::timezone_from_string(&config.org.timezone)?;
 
     Ok(match form {
-        Some(ecf_info) => {
+        Some(org_info) => {
             match azolve::verify_user(
                     &http_client,
-                    &ecf_info.ecf_id,
-                    &ecf_info.ecf_password,
+                    &org_info.org_id,
+                    &org_info.org_password,
                     &config.azolve.api_stage1,
                     &config.azolve.api_stage2,
                     &config.azolve.api_pwd,
@@ -198,9 +198,9 @@ fn link_memberships(
                         &config.lichess.domain,
                         &config.org.team_id,
                     ) {
-                        if ecf_id_unused(&ecf_info.ecf_id, &session, &db)? {
+                        if org_id_unused(&org_info.org_id, &session, &db)? {
                             db.register_member(
-                                &ecf_info.ecf_id,
+                                &org_info.org_id,
                                 &session.lichess_id,
                                 org::current_year(timezone)
                                     + (if org::is_past_expiry_this_year(timezone, config.expiry.membership_month, config.expiry.membership_day) {
@@ -211,7 +211,7 @@ fn link_memberships(
                             )?;
                             Ok(Redirect::to(uri!(index)))
                         } else {
-                            Err(Template::render("form", make_error_context(logged_in, "This ECF membership is already linked to a Lichess account.")))
+                            Err(Template::render("form", make_error_context(logged_in, "This membership is already linked to a Lichess account.")))
                         }
                     } else {
                         Err(Template::render("form", make_error_context(logged_in, "Could not add you to the Lichess team, please try again later.")))
