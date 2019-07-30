@@ -173,8 +173,10 @@ fn link_memberships(
                     &http_client,
                     &ecf_info.ecf_id,
                     &ecf_info.ecf_password,
-                    &config.azolve.api,
+                    &config.azolve.api_stage1,
+                    &config.azolve.api_stage2,
                     &config.azolve.api_pwd,
+                    &config.azolve.api_token,
                 ) {
                 Ok(true) => {
                     if lichess::join_team(
