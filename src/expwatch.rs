@@ -1,4 +1,4 @@
-use crate::db::{EcfDbClient, Membership};
+use crate::db::{OrgDbClient, Membership};
 use crate::lichess;
 use crate::org;
 use crate::textlog;
@@ -43,7 +43,7 @@ fn clean_expired_members(
             &team_id,
             &member.lichess_id,
         ) {
-            match db.remove_membership(&member.ecf_id) {
+            match db.remove_membership(&member.org_id) {
                 Ok(_) => {
                     textlog::append_line_to(
                         "kick.log",

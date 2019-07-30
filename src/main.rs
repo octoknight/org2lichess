@@ -31,7 +31,7 @@ mod textlog;
 mod types;
 
 use config::Config;
-use db::EcfDbClient;
+use db::OrgDbClient;
 use randstr::random_oauth_state;
 use session::Session;
 use tempctx::*;
@@ -100,7 +100,7 @@ fn manage_authed(
             "linked",
             make_linked_context(
                 logged_in,
-                member.ecf_id,
+                member.org_id,
                 member.exp_year,
                 can_use_form(&session, &config, &db)?,
                 &config.expiry,
@@ -150,7 +150,7 @@ fn form_redirect_index() -> Redirect {
 }
 
 fn ecf_id_unused(ecf_id: &str, session: &Session, db: &State<Db>) -> Result<bool, ErrorBox> {
-    match db.get_member_for_ecf_id(&ecf_id)? {
+    match db.get_member_for_org_id(&ecf_id)? {
         Some(member) => Ok(&session.lichess_id == &member.lichess_id),
         None => Ok(true),
     }
