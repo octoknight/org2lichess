@@ -63,7 +63,7 @@ impl OrgDbClient for RwLock<Client> {
             &[&org_id, &lichess_id],
         )?;
         let result = client.execute(
-            "INSERT INTO memberships (orgid, lichessid, exp) VALUES ($1, $2, $3);",
+            "INSERT INTO memberships (orgid, lichessid, exp) VALUES ($1, $2, $3)",
             &[&org_id, &lichess_id, &exp_year],
         )?;
         Ok(result)
