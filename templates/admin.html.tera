@@ -3,7 +3,8 @@
 {% block title %}Admin page{% endblock title %}
 
 {% block content2 %}
-Overview of {{ org.short_name }} membership IDs of Lichess accounts:
+<p>Unique referral link clicks: {{ ref_count }}.</p>
+<p>Overview of {{ org.short_name }} membership IDs of Lichess accounts:</p>
 <table class="table">
   <thead>
     <tr>

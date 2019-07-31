@@ -39,6 +39,7 @@ pub struct LinkedContext<'a> {
 pub struct AdminContext<'a> {
     #[serde(flatten)]
     pub logged_in: LoggedInContext<'a>,
+    pub ref_count: i64,
     pub members: Vec<Membership>,
 }
 
@@ -66,9 +67,10 @@ pub fn make_error_context<'a>(
 
 pub fn make_admin_context<'a>(
     logged_in: LoggedInContext<'a>,
+    ref_count: i64,
     members: Vec<Membership>,
 ) -> AdminContext<'a> {
-    AdminContext { logged_in, members }
+    AdminContext { logged_in, members, ref_count }
 }
 
 fn month_to_string(month: u32) -> String {

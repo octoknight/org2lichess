@@ -28,6 +28,8 @@ pub trait OrgDbClient {
     fn remove_membership(&self, org_id: &str) -> Result<u64, ErrorBox>;
     fn get_members(&self) -> Result<Vec<Membership>, ErrorBox>;
     fn get_members_with_at_most_expiry_year(&self, year: i32) -> Result<Vec<Membership>, ErrorBox>;
+    fn referral_click(&self, lichess_id: &str) -> Result<u64, ErrorBox>;
+    fn referral_count(&self) -> Result<i64, ErrorBox>;
 }
 
 fn extract_one_membership(rows: &Vec<postgres::row::Row>) -> Option<Membership> {
@@ -123,5 +125,18 @@ impl OrgDbClient for RwLock<Client> {
             });
         }
         Ok(members)
+    }
+
+    fn referral_click(&self, lichess_id: &str) -> Result<u64, ErrorBox> {
+        let result = self.w()?.execute(
+            "INSERT INTO ref (lichessid) VALUES ($1) ON CONFLICT DO NOTHING",
+            &[&lichess_id],
+        )?;
+        Ok(result)
+    }
+
+    fn referral_count(&self) -> Result<i64, ErrorBox> {
+        let rows = self.w()?.query("SELECT COUNT(*) FROM ref", &[])?;
+        Ok(rows.get(0).ok_or("no row returned")?.get(0))
     }
 }

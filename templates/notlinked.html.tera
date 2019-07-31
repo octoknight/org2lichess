@@ -1,5 +1,6 @@
 {% extends "loggedin" %}
 
 {% block content2 %}
-Your Lichess account is not linked yet with your {{ org.short_name }} membership. <a href="/link">Link memberships.</a>
+<p>Your Lichess account is not linked yet with your {{ org.short_name }} membership. <a href="/link">Link memberships.</a></p>
+<p>Don't have a membership? <a href="/org-ref">Become a member.</a></p>
 {% endblock content2 %}

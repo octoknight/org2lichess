@@ -253,13 +253,20 @@ fn admin(
 
     if logged_in.admin {
         let members = db.get_members()?;
+        let ref_count = db.referral_count()?;
         Ok(Ok(Template::render(
             "admin",
-            make_admin_context(logged_in, members),
+            make_admin_context(logged_in, ref_count, members),
         )))
     } else {
         Ok(Err(Status::Forbidden))
     }
+}
+
+#[get("/org-ref")]
+fn referral(session: Session, config: State<Config>, db: State<Db>) -> Result<Redirect, ErrorBox> {
+    db.referral_click(&session.lichess_id)?;
+    Ok(Redirect::to(config.org.referral_link.clone()))
 }
 
 fn main() {
@@ -300,7 +307,8 @@ fn main() {
                 link_memberships,
                 logout,
                 try_link_unauthenticated,
-                admin
+                admin,
+                referral
             ],
         )
         .launch();

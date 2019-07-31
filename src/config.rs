@@ -17,6 +17,7 @@ pub struct OrgConfig {
     pub image: String,
     pub team_id: String,
     pub timezone: String,
+    pub referral_link: String,
 }
 
 #[derive(Deserialize)]

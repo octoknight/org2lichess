@@ -5,6 +5,7 @@ icon = "favicon URL"
 image = "banner image URL"
 team_id = "Lichess team ID"
 timezone = "Organisation timezone (e.g. Europe/London)"
+referral_link = "Link to where a non-member can sign up"
 
 [expiry]
 membership_month = 8

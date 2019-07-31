@@ -1,4 +1,4 @@
-use crate::db::{OrgDbClient, Membership};
+use crate::db::{Membership, OrgDbClient};
 use crate::lichess;
 use crate::org;
 use crate::textlog;
