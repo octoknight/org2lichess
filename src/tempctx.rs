@@ -70,7 +70,11 @@ pub fn make_admin_context<'a>(
     ref_count: i64,
     members: Vec<Membership>,
 ) -> AdminContext<'a> {
-    AdminContext { logged_in, members, ref_count }
+    AdminContext {
+        logged_in,
+        members,
+        ref_count,
+    }
 }
 
 fn month_to_string(month: u32) -> String {
