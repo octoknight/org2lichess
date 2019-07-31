@@ -35,9 +35,7 @@ pub fn verify_user(
             ),
         );
     }
-    println!("{}", url);
     let req = Request::new(Method::GET, url);
     let response = http_client.execute(req)?.text()?;
-    println!("{}", &response);
     Ok(response.trim() == "[[\"Return Code\",\"Message\"],[\"1\",\"Success\"]]")
 }
