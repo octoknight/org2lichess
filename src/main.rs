@@ -263,6 +263,11 @@ fn admin(
     }
 }
 
+#[get("/admin", rank = 2)]
+fn admin_unauthed() -> Redirect {
+    Redirect::to(uri!(index))
+}
+
 #[get("/org-ref")]
 fn referral(session: Session, config: State<Config>, db: State<Db>) -> Result<Redirect, ErrorBox> {
     db.referral_click(&session.lichess_id)?;
@@ -308,6 +313,7 @@ fn main() {
                 logout,
                 try_link_unauthenticated,
                 admin,
+                admin_unauthed,
                 referral
             ],
         )
