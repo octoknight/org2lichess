@@ -10,14 +10,19 @@ pub fn verify_user(
     azolve_password: &str,
     azolve_token: &str,
 ) -> Result<bool, ErrorBox> {
-    let mut url = Url::parse(azolve_url_stage1)?;
-    {
-        let mut query = url.query_pairs_mut();
-        query.append_pair("source", &member_password);
-    }
-    let req = Request::new(Method::GET, url);
-    let response = http_client.execute(req)?.text()?;
-    let enc_password = response.trim().trim_matches('"');
+    let enc_password = if azolve_url_stage1 == "" {
+        member_password.to_string()
+    } else {
+        let mut url = Url::parse(azolve_url_stage1)?;
+        {
+            let mut query = url.query_pairs_mut();
+            query.append_pair("source", &member_password);
+        }
+        let req = Request::new(Method::GET, url);
+        let response = http_client.execute(req)?.text()?;
+        let trimmed = response.trim().trim_matches('"');
+        trimmed.to_string()
+    };
 
     let mut url = Url::parse(azolve_url_stage2)?;
     {
