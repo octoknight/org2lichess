@@ -8,6 +8,8 @@ extern crate rand;
 extern crate reqwest;
 extern crate rocket_contrib;
 extern crate serde;
+#[macro_use]
+extern crate serde_json;
 extern crate toml;
 
 use rocket::http::{Cookies, Status};
@@ -15,6 +17,7 @@ use rocket::request::Form;
 use rocket::response::Redirect;
 use rocket::State;
 use rocket_contrib::templates::Template;
+use std::collections::HashMap;
 use std::fs;
 use std::sync::RwLock;
 
@@ -268,6 +271,29 @@ fn admin_unauthed() -> Redirect {
     Redirect::to(uri!(index))
 }
 
+#[get("/admin/user-json")]
+fn admin_user_json(
+    session: Session,
+    config: State<Config>,
+    db: State<Db>,
+) -> Result<Result<rocket::response::content::Json<String>, Status>, ErrorBox> {
+    let logged_in = make_logged_in_context(&session, &config);
+
+    if logged_in.admin {
+        let members = db.get_members()?;
+        let mut map: HashMap<String, serde_json::Value> = HashMap::new();
+        for member in members {
+            let details = json!([member.lichess_id, 0]);
+            map.insert(member.org_id.to_string(), details);
+        }
+        Ok(Ok(rocket::response::content::Json(serde_json::to_string(
+            &map,
+        )?)))
+    } else {
+        Ok(Err(Status::Forbidden))
+    }
+}
+
 #[get("/org-ref")]
 fn referral(session: Session, config: State<Config>, db: State<Db>) -> Result<Redirect, ErrorBox> {
     db.referral_click(&session.lichess_id)?;
@@ -314,6 +340,7 @@ fn main() {
                 try_link_unauthenticated,
                 admin,
                 admin_unauthed,
+                admin_user_json,
                 referral
             ],
         )

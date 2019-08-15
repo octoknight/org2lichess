@@ -4,7 +4,7 @@
 
 {% block content2 %}
 <p>Unique referral link clicks: {{ ref_count }}.</p>
-<p>Overview of {{ org.short_name }} membership IDs of Lichess accounts:</p>
+<p>Overview of {{ org.short_name }} membership IDs of Lichess accounts (<a href="/admin/user-json">download as JSON</a>):</p>
 <table class="table">
   <thead>
     <tr>
