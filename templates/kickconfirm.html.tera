@@ -1,0 +1,10 @@
+{% extends "base" %}
+
+{% block title %}Confirm kick{% endblock title %}
+
+{% block content %}
+<p>Are you sure you want to kick <strong>{{ who }}</strong>?</p>
+<form method="POST" action="/admin/kick/{{ who }}">
+  <button class="btn btn-danger">Kick {{ who }}</button>
+</form>
+{% endblock content %}

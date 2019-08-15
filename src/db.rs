@@ -26,6 +26,7 @@ pub trait OrgDbClient {
     fn get_member_for_lichess_id(&self, lichess_id: &str) -> Result<Option<Membership>, ErrorBox>;
     fn lichess_member_has_org(&self, lichess_id: &str) -> Result<bool, ErrorBox>;
     fn remove_membership(&self, org_id: &str) -> Result<u64, ErrorBox>;
+    fn remove_membership_by_lichess_id(&self, lichess_id: &str) -> Result<u64, ErrorBox>;
     fn get_members(&self) -> Result<Vec<Membership>, ErrorBox>;
     fn get_members_with_at_most_expiry_year(&self, year: i32) -> Result<Vec<Membership>, ErrorBox>;
     fn referral_click(&self, lichess_id: &str) -> Result<u64, ErrorBox>;
@@ -94,6 +95,14 @@ impl OrgDbClient for RwLock<Client> {
         let result = self
             .w()?
             .execute("DELETE FROM memberships WHERE orgid = $1", &[&org_id])?;
+        Ok(result)
+    }
+
+    fn remove_membership_by_lichess_id(&self, lichess_id: &str) -> Result<u64, ErrorBox> {
+        let result = self.w()?.execute(
+            "DELETE FROM memberships WHERE lichessid = $1",
+            &[&lichess_id],
+        )?;
         Ok(result)
     }
 

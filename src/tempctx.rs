@@ -43,6 +43,13 @@ pub struct AdminContext<'a> {
     pub members: Vec<Membership>,
 }
 
+#[derive(Serialize)]
+pub struct KickConfirmContext<'a> {
+    #[serde(flatten)]
+    pub logged_in: LoggedInContext<'a>,
+    pub who: String,
+}
+
 pub fn empty_context(config: &Config) -> BaseContext {
     BaseContext { org: &config.org }
 }
@@ -112,4 +119,11 @@ pub fn make_linked_context<'a>(
         renew_month: month_to_string(exp_config.renewal_month),
         renew_day: exp_config.renewal_day,
     }
+}
+
+pub fn make_kick_confirm_context<'a>(
+    logged_in: LoggedInContext<'a>,
+    who: String,
+) -> KickConfirmContext<'a> {
+    KickConfirmContext { logged_in, who }
 }

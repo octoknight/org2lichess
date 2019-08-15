@@ -294,6 +294,45 @@ fn admin_user_json(
     }
 }
 
+#[get("/admin/kick/<who>")]
+fn admin_kick(who: String, session: Session, config: State<Config>) -> Result<Template, Status> {
+    let logged_in = make_logged_in_context(&session, &config);
+
+    if logged_in.admin {
+        Ok(Template::render(
+            "kickconfirm",
+            make_kick_confirm_context(logged_in, who),
+        ))
+    } else {
+        Err(Status::Forbidden)
+    }
+}
+
+#[post("/admin/kick/<who>")]
+fn admin_kick_confirmed(
+    who: String,
+    session: Session,
+    config: State<Config>,
+    db: State<Db>,
+    http_client: State<reqwest::Client>,
+) -> Result<Result<Redirect, Status>, ErrorBox> {
+    let logged_in = make_logged_in_context(&session, &config);
+
+    if logged_in.admin {
+        db.remove_membership_by_lichess_id(&who)?;
+        lichess::try_kick_from_team(
+            &http_client,
+            &config.lichess.personal_api_token,
+            &config.lichess.domain,
+            &config.org.team_id,
+            &who,
+        )?;
+        Ok(Ok(Redirect::to(uri!(admin))))
+    } else {
+        Ok(Err(Status::Forbidden))
+    }
+}
+
 #[get("/org-ref")]
 fn referral(session: Session, config: State<Config>, db: State<Db>) -> Result<Redirect, ErrorBox> {
     db.referral_click(&session.lichess_id)?;
@@ -341,6 +380,8 @@ fn main() {
                 admin,
                 admin_unauthed,
                 admin_user_json,
+                admin_kick,
+                admin_kick_confirmed,
                 referral
             ],
         )

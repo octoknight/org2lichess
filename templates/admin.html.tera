@@ -11,6 +11,7 @@
       <th scope="col">{{ org.short_name }} member ID</th>
       <th scope="col">Lichess ID</th>
       <th scope="col">Expiry</th>
+      <th scope="col">Kick</th>
     </tr>
   </thead>
   <tbody>
@@ -19,6 +20,7 @@
       <td scope="col">{{ member.org_id }}</td>
       <td scope="col">{{ member.lichess_id }}</td>
       <td scope="col">{{ member.exp_year }}</td>
+      <td scope="col"><a href="/admin/kick/{{ member.lichess_id }}" class="text-danger">Kick</a></td>
     </tr>
     {% endfor %}
   </tbody>

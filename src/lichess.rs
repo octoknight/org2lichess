@@ -95,7 +95,7 @@ pub fn join_team(http_client: &Client, token: &str, lichess_domain: &str, team_i
     try_join_team(http_client, token, lichess_domain, team_id).unwrap_or(false)
 }
 
-fn try_kick_from_team(
+pub fn try_kick_from_team(
     http_client: &Client,
     token: &str,
     lichess_domain: &str,
