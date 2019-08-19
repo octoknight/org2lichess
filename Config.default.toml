@@ -6,6 +6,8 @@ image = "banner image URL"
 team_id = "Lichess team ID"
 timezone = "Organisation timezone (e.g. Europe/London)"
 referral_link = "Link to where a non-member can sign up"
+authentication_secret = "PIN" # String describing how the organisation will verify your identity, for example "PIN" or "password".
+                              # Appears on the homepage and above the second field on the linking form.
 
 [expiry]
 membership_month = 8
