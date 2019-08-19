@@ -1,7 +1,7 @@
 {% extends "loggedin" %}
 
 {% block content2 %}
-<p>Your Lichess account is not linked yet with your {{ org.short_name }} membership. <a href="/link">Link memberships.</a></p>
+<p class="alert alert-danger">Your Lichess account is not linked yet with your {{ org.short_name }} membership. <a href="/link">Link memberships.</a></p>
 <p>Why link accounts?</p>
 <ul>
   <li>Automatically join and be accepted into the official {{ org.short_name }} team page on Lichess.</li>
