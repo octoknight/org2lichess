@@ -58,7 +58,7 @@ pub fn make_logged_in_context<'a>(session: &Session, config: &'a Config) -> Logg
     LoggedInContext {
         org: &config.org,
         lichess: String::from(&session.lichess_username),
-        admin: &session.lichess_id == &config.lichess.team_admin,
+        admin: session.lichess_id == config.lichess.team_admin,
     }
 }
 
@@ -111,8 +111,8 @@ pub fn make_linked_context<'a>(
 ) -> LinkedContext<'a> {
     LinkedContext {
         logged_in,
-        org_id: org_id,
-        exp_year: exp_year,
+        org_id,
+        exp_year,
         can_renew,
         exp_month: month_to_string(exp_config.membership_month),
         exp_day: exp_config.membership_day,
@@ -121,9 +121,9 @@ pub fn make_linked_context<'a>(
     }
 }
 
-pub fn make_kick_confirm_context<'a>(
-    logged_in: LoggedInContext<'a>,
+pub fn make_kick_confirm_context(
+    logged_in: LoggedInContext,
     who: String,
-) -> KickConfirmContext<'a> {
+) -> KickConfirmContext {
     KickConfirmContext { logged_in, who }
 }

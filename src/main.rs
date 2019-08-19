@@ -64,7 +64,7 @@ fn oauth_redirect(
     config: State<Config>,
     http_client: State<reqwest::Client>,
 ) -> Result<Result<Template, Status>, ErrorBox> {
-    match session::pop_oauth_state(&mut cookies).map(|v| &v == &state) {
+    match session::pop_oauth_state(&mut cookies).map(|v| v == state) {
         Some(true) => {
             let token = lichess::oauth_token_from_code(
                 &code,
@@ -154,7 +154,7 @@ fn form_redirect_index() -> Redirect {
 
 fn org_id_unused(org_id: &str, session: &Session, db: &State<Db>) -> Result<bool, ErrorBox> {
     match db.get_member_for_org_id(&org_id)? {
-        Some(member) => Ok(&session.lichess_id == &member.lichess_id),
+        Some(member) => Ok(session.lichess_id == member.lichess_id),
         None => Ok(true),
     }
 }

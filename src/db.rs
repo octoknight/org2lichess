@@ -33,14 +33,13 @@ pub trait OrgDbClient {
     fn referral_count(&self) -> Result<i64, ErrorBox>;
 }
 
-fn extract_one_membership(rows: &Vec<postgres::row::Row>) -> Option<Membership> {
+fn extract_one_membership(rows: &[postgres::row::Row]) -> Option<Membership> {
     rows.get(0).map(|row| {
-        let member = Membership {
+        Membership {
             org_id: row.get(0),
             lichess_id: row.get(1),
             exp_year: row.get(2),
-        };
-        member
+        }
     })
 }
 

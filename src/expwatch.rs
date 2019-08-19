@@ -74,6 +74,7 @@ fn clean_expired_members(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn find_and_clean_expired(
     delay_ms: u64,
     db: &RwLock<postgres::Client>,
@@ -103,6 +104,7 @@ fn find_and_clean_expired(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn launch(
     db_client: RwLock<postgres::Client>,
     lichess_domain: String,

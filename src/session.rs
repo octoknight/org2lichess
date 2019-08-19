@@ -14,8 +14,8 @@ pub struct Session {
     pub oauth_token: String,
 }
 
-const SESSION_COOKIE: &'static str = "e2lsession";
-const OAUTH_STATE_COOKIE: &'static str = "e2loauthstate";
+const SESSION_COOKIE: &str = "e2lsession";
+const OAUTH_STATE_COOKIE: &str = "e2loauthstate";
 
 impl<'a, 'r> FromRequest<'a, 'r> for Session {
     type Error = std::convert::Infallible;
