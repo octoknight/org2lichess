@@ -2,5 +2,11 @@
 
 {% block content2 %}
 <p>Your Lichess account is not linked yet with your {{ org.short_name }} membership. <a href="/link">Link memberships.</a></p>
+<p>Why link accounts?</p>
+<ul>
+  <li>Automatically join and be accepted into the official {{ org.short_name }} team page on Lichess.</li>
+  <li>Play {{ org.short_name }} rated tournaments in bullet, blitz, and rapid chess online from the comfort of home.</li>
+  <li>Comment on the {{ org.short_name }} forums on Lichess and join the community.</li>
+</ul>
 <p>Don't have a membership? <a href="/org-ref">Become a member.</a></p>
 {% endblock content2 %}
