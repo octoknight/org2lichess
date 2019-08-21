@@ -15,7 +15,7 @@
       <a href="/"><img class="img-fluid ecf-logo" src="{{ org.image }}"></a>
     </div>
     <div class="jumbotron d-flex">
-      <div class="container">
+      <div class="container" id="main-container">
         {% block content %}{% endblock content %}
       </div>
     </div>
