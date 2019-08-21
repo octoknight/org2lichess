@@ -7,7 +7,7 @@
 <div class="alert alert-danger">{{ error }}</div>
 {% endif %}
 <p>
-Use the below form to link your Lichess account {{ lichess }} with your {{ org.short_name }} membership.
+Use the below form to link your Lichess account <strong><a href="https://lichess.org/@/{{ lichess }}">{{ lichess }}</a></strong> with your {{ org.short_name }} membership.
 </p>
 <form method="POST" action="/link">
   <div class="form-group">
