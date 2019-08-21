@@ -34,12 +34,10 @@ pub trait OrgDbClient {
 }
 
 fn extract_one_membership(rows: &[postgres::row::Row]) -> Option<Membership> {
-    rows.get(0).map(|row| {
-        Membership {
-            org_id: row.get(0),
-            lichess_id: row.get(1),
-            exp_year: row.get(2),
-        }
+    rows.get(0).map(|row| Membership {
+        org_id: row.get(0),
+        lichess_id: row.get(1),
+        exp_year: row.get(2),
     })
 }
 

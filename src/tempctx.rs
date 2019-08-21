@@ -121,9 +121,6 @@ pub fn make_linked_context<'a>(
     }
 }
 
-pub fn make_kick_confirm_context(
-    logged_in: LoggedInContext,
-    who: String,
-) -> KickConfirmContext {
+pub fn make_kick_confirm_context(logged_in: LoggedInContext, who: String) -> KickConfirmContext {
     KickConfirmContext { logged_in, who }
 }
