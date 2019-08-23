@@ -11,6 +11,7 @@ authentication_secret = "PIN" # String describing how the organisation will veri
 memberid_placeholder = "Placeholder/explanation about the member ID (appears IN the member ID field on the form)"
 password_placeholder = "Placeholder/explanation about the password/PIN field (appears IN the password field on the form)"
 password_explanation = "Further explanation about the password (appears UNDER the password field on the form)"
+memberid_pattern = "Regular expression for valid membership ID"
 
 [expiry]
 membership_month = 8

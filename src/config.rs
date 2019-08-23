@@ -22,6 +22,7 @@ pub struct OrgConfig {
     pub memberid_placeholder: String,
     pub password_placeholder: String,
     pub password_explanation: String,
+    pub memberid_pattern: String,
 }
 
 #[derive(Deserialize)]
