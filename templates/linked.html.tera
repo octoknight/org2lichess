@@ -5,9 +5,10 @@
   Your Lichess account {{ lichess }} is linked with your {{ org.short_name }} membership <strong>{{ org_id }}</strong>.
 </p>
 <p>
-  Your {{ org.short_name }} membership expires on <strong>{{ exp_month }} {{ exp_day }}, {{ exp_year }}</strong>.
-  If you renew your {{ org.short_name }} membership, you can come back here after {{ exp_month }} {{ exp_day }} to fill in the registry form again to remain a member of the {{ org.short_name }} team on Lichess.
-  If you don't come back here, you'll be automatically kicked from the {{ org.short_name }} team on Lichess by <strong>{{ renew_month }} {{ renew_day }}, {{ exp_year }}</strong>.
+  Your Lichess account is now linked with your current year's {{ org.short_name }} membership. Your current year's membership
+  expires on <strong>{{ exp_month }} {{ exp_day }}, {{ exp_year }}</strong>. If you have renewed, or will be renewing, your {{ org.short_name }} membership,
+  you should come back here after {{ exp_month }} {{ exp_day }} and by {{ renew_month }} {{ renew_day }} latest to revalidate your membership and
+  remain in the Lichess team.
 </p>
 {% if can_renew %}
 <form action="/link" method="GET" class="mt-3">
