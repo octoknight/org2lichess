@@ -19,6 +19,7 @@ pub struct OrgConfig {
     pub timezone: String,
     pub referral_link: String,
     pub authentication_secret: String,
+    pub authentication_secret_first_word: String,
     pub memberid_placeholder: String,
     pub password_placeholder: String,
     pub password_explanation: String,

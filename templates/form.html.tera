@@ -16,7 +16,7 @@ Use the below form to link your Lichess account <strong><a href="https://lichess
     <small>Don't have a membership? <a href="/org-ref" tabindex="99">Become a member.</a></small>
   </div>
   <div class="form-group">
-    <label for="org-password">{{ org.authentication_secret }}</label>
+    <label for="org-password">{{ org.authentication_secret_first_word }}</label>
     <input type="password" class="form-control" name="org-password" id="org-password" placeholder="{{ org.password_placeholder }}" required>
     <small>{{ org.password_explanation }}</small>
   </div>
