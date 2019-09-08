@@ -36,3 +36,4 @@ personal_api_token = "Lichess personal API token"
 [azolve]
 api = "Azolve API url"
 api_pwd = "Azolve API password"
+api_token = "Azolve API token"
