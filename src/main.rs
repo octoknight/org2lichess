@@ -196,6 +196,7 @@ fn link_memberships(
                     &config.azolve.api_stage2,
                     &config.azolve.api_pwd,
                     &config.azolve.api_token,
+                    &config.org.authentication_secret,
                 ) {
                 Ok(true) => {
                     if lichess::join_team(
