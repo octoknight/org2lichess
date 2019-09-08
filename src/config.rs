@@ -52,8 +52,7 @@ pub struct LichessConfig {
 
 #[derive(Deserialize)]
 pub struct AzolveConfig {
-    pub api_stage1: String,
-    pub api_stage2: String,
+    pub api: String,
     pub api_pwd: String,
     pub api_token: String,
 }
