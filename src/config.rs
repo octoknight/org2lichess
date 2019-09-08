@@ -38,7 +38,7 @@ pub struct ExpiryConfig {
 pub struct ServerConfig {
     pub url: String,
     pub expiry_check_interval_seconds: u64,
-    pub db_connection_string: String,
+    pub postgres_options: String,
 }
 
 #[derive(Deserialize)]

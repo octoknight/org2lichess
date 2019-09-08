@@ -16,6 +16,8 @@ rand = "0.7.0"
 reqwest = "0.9.18"
 chrono = "0.4"
 chrono-tz = "0.5"
+r2d2 = "0.8"
+r2d2_postgres = "0.15.0-rc.1"
 
 [dependencies.rocket_contrib]
 version = "0.4.2"

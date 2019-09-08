@@ -1,7 +1,8 @@
 use crate::types::*;
-use postgres::{Client, NoTls};
+use postgres::NoTls;
+use r2d2::{Pool, PooledConnection};
+use r2d2_postgres::PostgresConnectionManager;
 use serde::Serialize;
-use std::sync::{RwLock, RwLockWriteGuard};
 
 #[derive(Serialize)]
 pub struct Membership {
@@ -10,27 +11,16 @@ pub struct Membership {
     pub exp_year: i32,
 }
 
-pub fn connect(connection_string: &str) -> Result<Client, postgres::Error> {
-    Client::connect(connection_string, NoTls)
-}
+type DbPool = Pool<PostgresConnectionManager<NoTls>>;
+type DbConnection = PooledConnection<PostgresConnectionManager<NoTls>>;
 
-pub trait OrgDbClient {
-    fn w(&self) -> Result<RwLockWriteGuard<'_, Client>, ErrorBox>;
-    fn register_member(
-        &self,
-        org_id: &str,
-        lichess_id: &str,
-        exp_year: i32,
-    ) -> Result<u64, ErrorBox>;
-    fn get_member_for_org_id(&self, org_id: &str) -> Result<Option<Membership>, ErrorBox>;
-    fn get_member_for_lichess_id(&self, lichess_id: &str) -> Result<Option<Membership>, ErrorBox>;
-    fn lichess_member_has_org(&self, lichess_id: &str) -> Result<bool, ErrorBox>;
-    fn remove_membership(&self, org_id: &str) -> Result<u64, ErrorBox>;
-    fn remove_membership_by_lichess_id(&self, lichess_id: &str) -> Result<u64, ErrorBox>;
-    fn get_members(&self) -> Result<Vec<Membership>, ErrorBox>;
-    fn get_members_with_at_most_expiry_year(&self, year: i32) -> Result<Vec<Membership>, ErrorBox>;
-    fn referral_click(&self, lichess_id: &str) -> Result<u64, ErrorBox>;
-    fn referral_count(&self) -> Result<i64, ErrorBox>;
+#[derive(Clone)]
+pub struct OrgDbClient(DbPool);
+
+pub fn connect(connection_options: &str) -> Result<OrgDbClient, ErrorBox> {
+    let manager = PostgresConnectionManager::new(connection_options.parse()?, NoTls);
+    let pool = Pool::new(manager)?;
+    Ok(OrgDbClient(pool))
 }
 
 fn extract_one_membership(rows: &[postgres::row::Row]) -> Option<Membership> {
@@ -41,15 +31,12 @@ fn extract_one_membership(rows: &[postgres::row::Row]) -> Option<Membership> {
     })
 }
 
-impl OrgDbClient for RwLock<Client> {
-    fn w(&self) -> Result<RwLockWriteGuard<'_, Client>, ErrorBox> {
-        match self.write() {
-            Ok(client) => Ok(client),
-            _ => Err(".write() failed".into()),
-        }
+impl OrgDbClient {
+    fn w(&self) -> Result<DbConnection, ErrorBox> {
+        Ok(self.0.get()?)
     }
 
-    fn register_member(
+    pub fn register_member(
         &self,
         org_id: &str,
         lichess_id: &str,
@@ -67,7 +54,7 @@ impl OrgDbClient for RwLock<Client> {
         Ok(result)
     }
 
-    fn get_member_for_org_id(&self, org_id: &str) -> Result<Option<Membership>, ErrorBox> {
+    pub fn get_member_for_org_id(&self, org_id: &str) -> Result<Option<Membership>, ErrorBox> {
         let rows = self.w()?.query(
             "SELECT orgid, lichessid, exp FROM memberships WHERE orgid = $1",
             &[&org_id],
@@ -75,7 +62,10 @@ impl OrgDbClient for RwLock<Client> {
         Ok(extract_one_membership(&rows))
     }
 
-    fn get_member_for_lichess_id(&self, lichess_id: &str) -> Result<Option<Membership>, ErrorBox> {
+    pub fn get_member_for_lichess_id(
+        &self,
+        lichess_id: &str,
+    ) -> Result<Option<Membership>, ErrorBox> {
         let rows = self.w()?.query(
             "SELECT orgid, lichessid, exp FROM memberships WHERE lichessid = $1",
             &[&lichess_id],
@@ -83,19 +73,19 @@ impl OrgDbClient for RwLock<Client> {
         Ok(extract_one_membership(&rows))
     }
 
-    fn lichess_member_has_org(&self, lichess_id: &str) -> Result<bool, ErrorBox> {
+    pub fn lichess_member_has_org(&self, lichess_id: &str) -> Result<bool, ErrorBox> {
         self.get_member_for_lichess_id(lichess_id)
             .map(|member| member.is_some())
     }
 
-    fn remove_membership(&self, org_id: &str) -> Result<u64, ErrorBox> {
+    pub fn remove_membership(&self, org_id: &str) -> Result<u64, ErrorBox> {
         let result = self
             .w()?
             .execute("DELETE FROM memberships WHERE orgid = $1", &[&org_id])?;
         Ok(result)
     }
 
-    fn remove_membership_by_lichess_id(&self, lichess_id: &str) -> Result<u64, ErrorBox> {
+    pub fn remove_membership_by_lichess_id(&self, lichess_id: &str) -> Result<u64, ErrorBox> {
         let result = self.w()?.execute(
             "DELETE FROM memberships WHERE lichessid = $1",
             &[&lichess_id],
@@ -103,7 +93,7 @@ impl OrgDbClient for RwLock<Client> {
         Ok(result)
     }
 
-    fn get_members(&self) -> Result<Vec<Membership>, ErrorBox> {
+    pub fn get_members(&self) -> Result<Vec<Membership>, ErrorBox> {
         let mut members: Vec<Membership> = vec![];
         for row in self
             .w()?
@@ -118,7 +108,10 @@ impl OrgDbClient for RwLock<Client> {
         Ok(members)
     }
 
-    fn get_members_with_at_most_expiry_year(&self, year: i32) -> Result<Vec<Membership>, ErrorBox> {
+    pub fn get_members_with_at_most_expiry_year(
+        &self,
+        year: i32,
+    ) -> Result<Vec<Membership>, ErrorBox> {
         let mut members: Vec<Membership> = vec![];
         for row in self.w()?.query(
             "SELECT orgid, lichessid, exp FROM memberships WHERE exp <= $1",
@@ -133,7 +126,7 @@ impl OrgDbClient for RwLock<Client> {
         Ok(members)
     }
 
-    fn referral_click(&self, lichess_id: &str) -> Result<u64, ErrorBox> {
+    pub fn referral_click(&self, lichess_id: &str) -> Result<u64, ErrorBox> {
         let result = self.w()?.execute(
             "INSERT INTO ref (lichessid) VALUES ($1) ON CONFLICT DO NOTHING",
             &[&lichess_id],
@@ -141,7 +134,7 @@ impl OrgDbClient for RwLock<Client> {
         Ok(result)
     }
 
-    fn referral_count(&self) -> Result<i64, ErrorBox> {
+    pub fn referral_count(&self) -> Result<i64, ErrorBox> {
         let rows = self.w()?.query("SELECT COUNT(*) FROM ref", &[])?;
         Ok(rows.get(0).ok_or("no row returned")?.get(0))
     }

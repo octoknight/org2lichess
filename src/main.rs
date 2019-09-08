@@ -19,7 +19,6 @@ use rocket::State;
 use rocket_contrib::templates::Template;
 use std::collections::HashMap;
 use std::fs;
-use std::sync::RwLock;
 
 mod azolve;
 mod config;
@@ -94,7 +93,7 @@ fn oauth_redirect(
 fn manage_authed(
     session: Session,
     config: State<Config>,
-    db: State<Db>,
+    db: State<OrgDbClient>,
 ) -> Result<Template, ErrorBox> {
     let logged_in = make_logged_in_context(&session, &config);
 
@@ -116,7 +115,7 @@ fn manage_authed(
 fn can_use_form(
     session: &Session,
     config: &State<Config>,
-    db: &State<Db>,
+    db: &State<OrgDbClient>,
 ) -> Result<bool, ErrorBox> {
     let timezone = org::timezone_from_string(&config.org.timezone)?;
     db.get_member_for_lichess_id(&session.lichess_id)
@@ -135,7 +134,7 @@ fn can_use_form(
 fn show_form(
     session: Session,
     config: State<Config>,
-    db: State<Db>,
+    db: State<OrgDbClient>,
 ) -> Result<Result<Template, Redirect>, ErrorBox> {
     if !can_use_form(&session, &config, &db)? {
         Ok(Err(Redirect::to(uri!(index))))
@@ -152,7 +151,11 @@ fn form_redirect_index() -> Redirect {
     Redirect::to(uri!(index))
 }
 
-fn org_id_unused(org_id: &str, session: &Session, db: &State<Db>) -> Result<bool, ErrorBox> {
+fn org_id_unused(
+    org_id: &str,
+    session: &Session,
+    db: &State<OrgDbClient>,
+) -> Result<bool, ErrorBox> {
     match db.get_member_for_org_id(&org_id)? {
         Some(member) => Ok(session.lichess_id == member.lichess_id),
         None => Ok(true),
@@ -172,7 +175,7 @@ fn link_memberships(
     form: Option<Form<OrgInfo>>,
     session: Session,
     config: State<Config>,
-    db: State<Db>,
+    db: State<OrgDbClient>,
     http_client: State<reqwest::Client>,
 ) -> Result<Result<Redirect, Template>, ErrorBox> {
     if !can_use_form(&session, &config, &db)? {
@@ -250,7 +253,7 @@ fn logout(cookies: Cookies<'_>, config: State<Config>) -> Template {
 fn admin(
     session: Session,
     config: State<Config>,
-    db: State<Db>,
+    db: State<OrgDbClient>,
 ) -> Result<Result<Template, Status>, ErrorBox> {
     let logged_in = make_logged_in_context(&session, &config);
 
@@ -275,7 +278,7 @@ fn admin_unauthed() -> Redirect {
 fn admin_user_json(
     session: Session,
     config: State<Config>,
-    db: State<Db>,
+    db: State<OrgDbClient>,
 ) -> Result<Result<rocket::response::content::Json<String>, Status>, ErrorBox> {
     let logged_in = make_logged_in_context(&session, &config);
 
@@ -313,7 +316,7 @@ fn admin_kick_confirmed(
     who: String,
     session: Session,
     config: State<Config>,
-    db: State<Db>,
+    db: State<OrgDbClient>,
     http_client: State<reqwest::Client>,
 ) -> Result<Result<Redirect, Status>, ErrorBox> {
     let logged_in = make_logged_in_context(&session, &config);
@@ -334,7 +337,11 @@ fn admin_kick_confirmed(
 }
 
 #[get("/org-ref")]
-fn referral(session: Session, config: State<Config>, db: State<Db>) -> Result<Redirect, ErrorBox> {
+fn referral(
+    session: Session,
+    config: State<Config>,
+    db: State<OrgDbClient>,
+) -> Result<Redirect, ErrorBox> {
     db.referral_click(&session.lichess_id)?;
     Ok(Redirect::to(config.org.referral_link.clone()))
 }
@@ -343,10 +350,10 @@ fn main() {
     let config_contents = fs::read_to_string("Config.toml").expect("Cannot read Config.toml");
     let config: Config = toml::from_str(&config_contents).expect("Invalid Config.toml");
 
-    let db_client1 = RwLock::new(db::connect(&config.server.db_connection_string).unwrap());
+    let db_client = db::connect(&config.server.postgres_options).unwrap();
 
     expwatch::launch(
-        db_client1,
+        db_client.clone(),
         config.lichess.domain.clone(),
         config.org.team_id.clone(),
         config.lichess.personal_api_token.clone(),
@@ -358,13 +365,11 @@ fn main() {
 
     let http_client = reqwest::Client::new();
 
-    let db_client2 = RwLock::new(db::connect(&config.server.db_connection_string).unwrap());
-
     rocket::ignite()
         .attach(Template::fairing())
         .manage(config)
         .manage(http_client)
-        .manage(db_client2)
+        .manage(db_client)
         .mount(
             "/",
             routes![

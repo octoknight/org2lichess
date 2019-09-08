@@ -4,13 +4,11 @@ use crate::org;
 use crate::textlog;
 use crate::types::*;
 use chrono_tz::Tz;
-use postgres;
 use reqwest;
-use std::sync::RwLock;
 use std::thread;
 
 fn find_expired_members(
-    db: &RwLock<postgres::Client>,
+    db: &OrgDbClient,
     timezone: Tz,
     month: u32,
     day: u32,
@@ -29,7 +27,7 @@ fn find_expired_members(
 fn clean_expired_members(
     expired_members: Vec<Membership>,
     delay_ms: u64,
-    db: &RwLock<postgres::Client>,
+    db: &OrgDbClient,
     http_client: &reqwest::Client,
     lichess_domain: &str,
     team_id: &str,
@@ -77,7 +75,7 @@ fn clean_expired_members(
 #[allow(clippy::too_many_arguments)]
 fn find_and_clean_expired(
     delay_ms: u64,
-    db: &RwLock<postgres::Client>,
+    db: &OrgDbClient,
     http_client: &reqwest::Client,
     lichess_domain: &str,
     team_id: &str,
@@ -106,7 +104,7 @@ fn find_and_clean_expired(
 
 #[allow(clippy::too_many_arguments)]
 pub fn launch(
-    db_client: RwLock<postgres::Client>,
+    db_client: OrgDbClient,
     lichess_domain: String,
     team_id: String,
     api_token: String,
