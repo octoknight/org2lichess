@@ -5,6 +5,9 @@
   Your Lichess account {{ lichess }} is linked with your {{ org.short_name }} membership <strong>{{ org_id }}</strong>.
 </p>
 <p>
+<a href="https://lichess.org/team/{{ org.team_id }}">Visit the {{ org.short_name }} team.</a>
+</p>
+<p>
   Your Lichess account is now linked with your current year's {{ org.short_name }} membership. Your current year's membership
   expires on <strong>{{ exp_month }} {{ exp_day }}, {{ exp_year }}</strong>. If you have renewed, or will be renewing, your {{ org.short_name }} membership,
   you should come back here after {{ exp_month }} {{ exp_day }} and by {{ renew_month }} {{ renew_day }} latest to revalidate your membership and
