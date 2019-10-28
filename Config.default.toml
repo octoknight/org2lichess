@@ -23,7 +23,7 @@ renewal_day = 14 # The last month and day on which a member can renew their memb
 
 [server]
 url = "http://localhost:55555"
-postgres_options = "PostgreSQL connection options (e.g.: host=localhost user=postgres database=orgdb)"
+postgres_options = "PostgreSQL connection options (e.g.: host=localhost user=postgres dbname=orgdb)"
 expiry_check_interval_seconds = 21600
 
 [lichess]
