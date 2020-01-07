@@ -20,7 +20,7 @@ Use the below form to link your Lichess account <strong><a href="https://lichess
     <input type="password" class="form-control" name="org-password" id="org-password" placeholder="{{ org.password_placeholder }}" required>
     <small>
     {{ org.password_explanation }}<br>
-    Can't find your {{ org.authentication_secret }}? <a href="{{ org.authentication_secret_help_link }}">{{ org.authentication_secret_help_text }}</a>
+    Can't find your {{ org.authentication_secret }}? <a href="{{ org.authentication_secret_help_link }}">{{ org.authentication_secret_help }}</a>
     </small>
   </div>
   <button class="btn btn-primary" type="submit">Link memberships</button>
