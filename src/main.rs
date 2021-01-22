@@ -49,8 +49,8 @@ fn auth(config: State<Config>, cookies: Cookies<'_>) -> Result<Redirect, ErrorBo
     let oauth_state = random_oauth_state()?;
     session::set_oauth_state_cookie(cookies, &oauth_state);
 
-    let url = format!("https://oauth.{}/oauth/authorize?response_type=code&client_id={}&redirect_uri={}/oauth_redirect&scope=team:write&state={}",
-        config.lichess.domain, config.lichess.client_id, config.server.url, oauth_state);
+    let url = format!("https://oauth.lichess.org/oauth/authorize?response_type=code&client_id={}&redirect_uri={}/oauth_redirect&scope=team:write&state={}",
+        config.lichess.client_id, config.server.url, oauth_state);
 
     Ok(Redirect::to(url))
 }
@@ -68,13 +68,13 @@ fn oauth_redirect(
             let token = lichess::oauth_token_from_code(
                 &code,
                 &http_client,
-                &config.lichess.domain,
+                "lichess.org",
                 &config.lichess.client_id,
                 &config.lichess.client_secret,
                 &format!("{}/oauth_redirect", config.server.url),
             )
             .unwrap();
-            let user = lichess::get_user(&token, &http_client, &config.lichess.domain).unwrap();
+            let user = lichess::get_user(&token, &http_client, "lichess.org").unwrap();
             session::set_session(
                 cookies,
                 Session {
@@ -201,7 +201,7 @@ fn link_memberships(
                     if lichess::join_team(
                         &http_client,
                         &session.oauth_token,
-                        &config.lichess.domain,
+                        "lichess.org",
                         &config.org.team_id,
                     ) {
                         if org_id_unused(&org_info.org_id, &session, &db)? {
@@ -326,7 +326,7 @@ fn admin_kick_confirmed(
         lichess::try_kick_from_team(
             &http_client,
             &config.lichess.personal_api_token,
-            &config.lichess.domain,
+            "lichess.org",
             &config.org.team_id,
             &who,
         )?;
@@ -354,7 +354,7 @@ fn main() {
 
     expwatch::launch(
         db_client.clone(),
-        config.lichess.domain.clone(),
+        String::from("lichess.org"),
         config.org.team_id.clone(),
         config.lichess.personal_api_token.clone(),
         config.server.expiry_check_interval_seconds,
