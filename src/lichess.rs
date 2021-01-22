@@ -30,7 +30,7 @@ fn create_request(
     let headers = req.headers_mut();
     headers.insert(ACCEPT, accept.parse()?);
     headers.insert(AUTHORIZATION, authorization.parse()?);
-    headers.insert(ORIGIN, "https://lichess.org/".parse()?);
+    headers.insert(ORIGIN, "https://lichess.org".parse()?);
     Ok(req)
 }
 
