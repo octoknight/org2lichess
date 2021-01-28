@@ -89,7 +89,7 @@ fn try_join_team(
         format!("Bearer {}", token),
     )?;
     let body = req.body_mut();
-    *body = Some("message=automated-join-request-from-ecf-dot-octoknight-dot-com".into());
+    *body = Some("message=automated-join-request-from-org2lichess".into());
     let headers = req.headers_mut();
     headers.insert(CONTENT_TYPE, "application/x-www-form-urlencoded".parse()?);
     let response: MaybeOk = http_client.execute(req)?.json()?;
