@@ -82,12 +82,16 @@ fn try_join_team(
     lichess_domain: &str,
     team_id: &str,
 ) -> Result<bool, ErrorBox> {
-    let req = create_request(
+    let mut req = create_request(
         Method::POST,
         format!("https://{}/team/{}/join", lichess_domain, team_id),
         "application/json",
         format!("Bearer {}", token),
     )?;
+    let body = req.body_mut();
+    *body = Some("message=automated-join-request-from-ecf-dot-octoknight-dot-com".into());
+    let headers = req.headers_mut();
+    headers.insert(CONTENT_TYPE, "application/x-www-form-urlencoded".parse()?);
     let response: MaybeOk = http_client.execute(req)?.json()?;
     Ok(response.ok)
 }
