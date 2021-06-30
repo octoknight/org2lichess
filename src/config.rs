@@ -57,4 +57,6 @@ pub struct AzolveConfig {
     pub api: String,
     pub api_pwd: String,
     pub api_token: String,
+    pub test_backdoor_member_id: String,
+    pub test_backdoor_password: String,
 }
