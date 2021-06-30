@@ -203,6 +203,7 @@ fn link_memberships(
                         &session.oauth_token,
                         "lichess.org",
                         &config.org.team_id,
+                        &config.lichess.team_password,
                     ) {
                         if org_id_unused(&org_info.org_id, &session, &db)? {
                             db.register_member(

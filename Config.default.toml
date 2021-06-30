@@ -33,6 +33,7 @@ client_id = "Lichess OAuth client ID here"
 client_secret = "Lichess OAuth client secret here"
 team_admin = "Lichess user ID of team administrator"
 personal_api_token = "Lichess personal API token"
+team_password = "Team password as set in your team settings"
 
 [azolve]
 api = "Azolve API url"

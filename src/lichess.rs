@@ -81,6 +81,7 @@ fn try_join_team(
     token: &str,
     lichess_domain: &str,
     team_id: &str,
+    team_password: &str,
 ) -> Result<bool, ErrorBox> {
     let mut req = create_request(
         Method::POST,
@@ -89,15 +90,21 @@ fn try_join_team(
         format!("Bearer {}", token),
     )?;
     let body = req.body_mut();
-    *body = Some("message=automated-join-request-from-org2lichess".into());
+    *body = Some(("password=".to_owned() + &urlencoding::encode(team_password)).into());
     let headers = req.headers_mut();
     headers.insert(CONTENT_TYPE, "application/x-www-form-urlencoded".parse()?);
     let response: MaybeOk = http_client.execute(req)?.json()?;
     Ok(response.ok)
 }
 
-pub fn join_team(http_client: &Client, token: &str, lichess_domain: &str, team_id: &str) -> bool {
-    try_join_team(http_client, token, lichess_domain, team_id).unwrap_or(false)
+pub fn join_team(
+    http_client: &Client,
+    token: &str,
+    lichess_domain: &str,
+    team_id: &str,
+    team_password: &str,
+) -> bool {
+    try_join_team(http_client, token, lichess_domain, team_id, team_password).unwrap_or(false)
 }
 
 pub fn try_kick_from_team(
