@@ -34,8 +34,9 @@ mod types;
 
 use config::Config;
 use db::OrgDbClient;
-use randstr::random_oauth_state;
+use randstr::random_string;
 use session::Session;
+use sha2::{Digest, Sha256};
 use tempctx::*;
 use types::*;
 
@@ -45,12 +46,30 @@ fn index(config: State<Config>) -> Template {
 }
 
 #[get("/auth")]
-fn auth(config: State<Config>, cookies: Cookies<'_>) -> Result<Redirect, ErrorBox> {
-    let oauth_state = random_oauth_state()?;
-    session::set_oauth_state_cookie(cookies, &oauth_state);
+fn auth(config: State<Config>, mut cookies: Cookies<'_>) -> Result<Redirect, ErrorBox> {
+    let oauth_state = random_string()?;
+    session::set_oauth_state_cookie(&mut cookies, &oauth_state);
 
-    let url = format!("https://oauth.lichess.org/oauth/authorize?response_type=code&client_id={}&redirect_uri={}/oauth_redirect&scope=team:write&state={}",
-        config.lichess.client_id, config.server.url, oauth_state);
+    let code_verifier = random_string()?;
+    session::set_oauth_code_verifier(&mut cookies, &code_verifier);
+
+    let mut hasher = Sha256::default();
+    hasher.update(code_verifier.as_bytes());
+    let hash_result = base64::encode(hasher.finalize())
+        .replace("=", "")
+        .replace("+", "-")
+        .replace("/", "_");
+
+    let url = format!(
+        "https://lichess.org/oauth?response_type=code\
+            &client_id={}&scope=team:write\
+            &redirect_uri={}%2Foauth_redirect\
+            &state={}&code_challenge_method=S256&code_challenge={}",
+        urlencoding::encode(&config.lichess.client_id),
+        urlencoding::encode(&config.server.url),
+        oauth_state,
+        &hash_result
+    );
 
     Ok(Redirect::to(url))
 }
@@ -63,14 +82,16 @@ fn oauth_redirect(
     config: State<Config>,
     http_client: State<reqwest::Client>,
 ) -> Result<Result<Template, Status>, ErrorBox> {
-    match session::pop_oauth_state(&mut cookies).map(|v| v == state) {
-        Some(true) => {
+    match (
+        session::pop_oauth_state(&mut cookies).map(|v| v == state),
+        session::pop_oauth_code_verifier(&mut cookies),
+    ) {
+        (Some(true), Some(code_verifier)) => {
             let token = lichess::oauth_token_from_code(
                 &code,
                 &http_client,
-                "lichess.org",
                 &config.lichess.client_id,
-                &config.lichess.client_secret,
+                &code_verifier,
                 &format!("{}/oauth_redirect", config.server.url),
             )
             .unwrap();

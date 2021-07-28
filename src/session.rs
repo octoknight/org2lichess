@@ -1,6 +1,6 @@
 use crate::types::*;
 use chrono::Duration;
-use rocket::http::{Cookie, Cookies};
+use rocket::http::{Cookie, Cookies, SameSite};
 use rocket::outcome::IntoOutcome;
 use rocket::request::{FromRequest, Outcome};
 use rocket::Request;
@@ -16,6 +16,7 @@ pub struct Session {
 
 const SESSION_COOKIE: &str = "e2lsession";
 const OAUTH_STATE_COOKIE: &str = "e2loauthstate";
+const OAUTH_VERIFIER_COOKIE: &str = "e2loauthverifier";
 
 impl<'a, 'r> FromRequest<'a, 'r> for Session {
     type Error = std::convert::Infallible;
@@ -35,6 +36,8 @@ impl<'a, 'r> FromRequest<'a, 'r> for Session {
 pub fn set_session(mut cookies: Cookies<'_>, session: Session) -> Result<(), ErrorBox> {
     let mut session_cookie = Cookie::new(SESSION_COOKIE, serde_json::to_string(&session)?);
     session_cookie.set_max_age(Duration::minutes(55));
+    session_cookie.set_same_site(SameSite::Lax);
+    session_cookie.set_secure(true);
     cookies.add_private(session_cookie);
     Ok(())
 }
@@ -43,7 +46,7 @@ pub fn remove_session(mut cookies: Cookies<'_>) {
     cookies.remove_private(Cookie::named(SESSION_COOKIE));
 }
 
-pub fn set_oauth_state_cookie(mut cookies: Cookies<'_>, oauth_state: &str) {
+pub fn set_oauth_state_cookie(cookies: &mut Cookies<'_>, oauth_state: &str) {
     let mut oauth_state_cookie = Cookie::new(OAUTH_STATE_COOKIE, oauth_state.to_string());
     oauth_state_cookie.set_max_age(Duration::minutes(5));
     cookies.add(oauth_state_cookie);
@@ -54,5 +57,21 @@ pub fn pop_oauth_state(cookies: &mut Cookies<'_>) -> Option<String> {
         .get(OAUTH_STATE_COOKIE)
         .map(|c| c.value().to_string());
     cookies.remove(Cookie::named(OAUTH_STATE_COOKIE));
+    cookie_value
+}
+
+pub fn set_oauth_code_verifier(cookies: &mut Cookies<'_>, code_verifier: &str) {
+    let mut verifier_cookie = Cookie::new(OAUTH_VERIFIER_COOKIE, code_verifier.to_string());
+    verifier_cookie.set_max_age(Duration::minutes(5));
+    verifier_cookie.set_same_site(SameSite::Lax);
+    verifier_cookie.set_secure(true);
+    cookies.add_private(verifier_cookie);
+}
+
+pub fn pop_oauth_code_verifier(cookies: &mut Cookies<'_>) -> Option<String> {
+    let cookie_value = cookies
+        .get_private(OAUTH_VERIFIER_COOKIE)
+        .map(|c| c.value().to_string());
+    cookies.remove_private(Cookie::named(OAUTH_VERIFIER_COOKIE));
     cookie_value
 }

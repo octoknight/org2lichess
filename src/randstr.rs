@@ -1,8 +1,8 @@
 use rand::Rng;
 
-pub fn random_oauth_state() -> Result<String, std::str::Utf8Error> {
+pub fn random_string() -> Result<String, std::str::Utf8Error> {
     let mut rng = rand::thread_rng();
-    let mut oauth_state_bytes: [u8; 12] = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+    let mut oauth_state_bytes: [u8; 64] = [0; 64];
     for x in &mut oauth_state_bytes {
         *x = (rng.gen::<u8>() % 26) + 97;
     }

@@ -1403,6 +1403,7 @@ dependencies = [
 name = "org2lichess"
 version = "0.1.0"
 dependencies = [
+ "base64 0.13.0",
  "chrono",
  "chrono-tz",
  "postgres",
@@ -1414,6 +1415,7 @@ dependencies = [
  "rocket_contrib",
  "serde",
  "serde_json",
+ "sha2",
  "toml 0.5.8",
  "urlencoding",
 ]

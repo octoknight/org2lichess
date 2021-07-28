@@ -46,7 +46,6 @@ pub struct ServerConfig {
 #[derive(Deserialize)]
 pub struct LichessConfig {
     pub client_id: String,
-    pub client_secret: String,
     pub team_admin: String,
     pub personal_api_token: String,
     pub team_password: String,
