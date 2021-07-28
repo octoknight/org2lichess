@@ -221,14 +221,14 @@ fn link_memberships(
                     &config.azolve.test_backdoor_password,
                 ) {
                 Ok(true) => {
-                    if lichess::join_team(
-                        &http_client,
-                        &session.oauth_token,
-                        "lichess.org",
-                        &config.org.team_id,
-                        &config.lichess.team_password,
-                    ) {
-                        if org_id_unused(&org_info.org_id, &session, &db)? {
+                    if org_id_unused(&org_info.org_id, &session, &db)? {
+                        if lichess::join_team(
+                            &http_client,
+                            &session.oauth_token,
+                            "lichess.org",
+                            &config.org.team_id,
+                            &config.lichess.team_password,
+                        ) {
                             db.register_member(
                                 &org_info.org_id,
                                 &session.lichess_id,
@@ -241,10 +241,10 @@ fn link_memberships(
                             )?;
                             Ok(Redirect::to(uri!(index)))
                         } else {
-                            Err(Template::render("form", make_error_context(logged_in, "This membership is already linked to a Lichess account.")))
+                            Err(Template::render("form", make_error_context(logged_in, "Could not add you to the Lichess team, please try again later.")))
                         }
                     } else {
-                        Err(Template::render("form", make_error_context(logged_in, "Could not add you to the Lichess team, please try again later.")))
+                        Err(Template::render("form", make_error_context(logged_in, "This membership is already linked to a Lichess account.")))
                     }
                 }
                 Ok(false) => {
