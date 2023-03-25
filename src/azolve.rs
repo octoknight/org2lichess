@@ -1,5 +1,6 @@
 use crate::types::*;
-use reqwest::{Client, Method, Request, Url};
+use reqwest::blocking::{Client, Request};
+use reqwest::{Method, Url};
 
 pub fn verify_user(
     http_client: &Client,

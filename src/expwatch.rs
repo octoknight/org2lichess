@@ -28,7 +28,7 @@ fn clean_expired_members(
     expired_members: Vec<Membership>,
     delay_ms: u64,
     db: &OrgDbClient,
-    http_client: &reqwest::Client,
+    http_client: &reqwest::blocking::Client,
     lichess_domain: &str,
     team_id: &str,
     api_token: &str,
@@ -76,7 +76,7 @@ fn clean_expired_members(
 fn find_and_clean_expired(
     delay_ms: u64,
     db: &OrgDbClient,
-    http_client: &reqwest::Client,
+    http_client: &reqwest::blocking::Client,
     lichess_domain: &str,
     team_id: &str,
     api_token: &str,
@@ -114,7 +114,7 @@ pub fn launch(
     renewal_day: u32,
 ) {
     thread::spawn(move || {
-        let http_client = reqwest::Client::new();
+        let http_client = reqwest::blocking::Client::new();
 
         loop {
             println!("Finding and cleaning expired members...");

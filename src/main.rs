@@ -80,7 +80,7 @@ fn oauth_redirect(
     code: String,
     state: String,
     config: State<Config>,
-    http_client: State<reqwest::Client>,
+    http_client: State<reqwest::blocking::Client>,
 ) -> Result<Result<Template, Status>, ErrorBox> {
     match (
         session::pop_oauth_state(&mut cookies).map(|v| v == state),
@@ -197,7 +197,7 @@ fn link_memberships(
     session: Session,
     config: State<Config>,
     db: State<OrgDbClient>,
-    http_client: State<reqwest::Client>,
+    http_client: State<reqwest::blocking::Client>,
 ) -> Result<Result<Redirect, Template>, ErrorBox> {
     if !can_use_form(&session, &config, &db)? {
         return Ok(Ok(Redirect::to(uri!(index))));
@@ -341,7 +341,7 @@ fn admin_kick_confirmed(
     session: Session,
     config: State<Config>,
     db: State<OrgDbClient>,
-    http_client: State<reqwest::Client>,
+    http_client: State<reqwest::blocking::Client>,
 ) -> Result<Result<Redirect, Status>, ErrorBox> {
     let logged_in = make_logged_in_context(&session, &config);
 
@@ -387,7 +387,7 @@ fn main() {
         config.expiry.renewal_day,
     );
 
-    let http_client = reqwest::Client::new();
+    let http_client = reqwest::blocking::Client::new();
 
     rocket::ignite()
         .attach(Template::fairing())

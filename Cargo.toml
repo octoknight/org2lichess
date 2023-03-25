@@ -11,18 +11,21 @@ rocket = "0.4"
 postgres = "0.19"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-toml = "0.5"
+toml = "0.7"
 rand = "0.8"
-reqwest = "0.9.18"
+reqwest = { version = "0.11", features = [ "blocking", "json" ] }
 chrono = "0.4"
 chrono-tz = "0.5"
 r2d2 = "0.8"
 r2d2_postgres = "0.18"
-urlencoding = "1.3"
-sha2 = "0.9"
-base64 = "0.13"
+urlencoding = "2.1"
+sha2 = "0.10"
+base64 = "0.21"
 
 [dependencies.rocket_contrib]
 version = "0.4"
 default-features = false
 features = ["tera_templates"]
+
+[patch.crates-io]
+traitobject = { git = "https://github.com/reem/rust-traitobject", rev = "b3471a15917b2caf5a8b27debb0b4b390fc6634f" }

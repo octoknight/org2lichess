@@ -1,6 +1,7 @@
 use crate::types::*;
+use reqwest::blocking::{Client, Request};
 use reqwest::header::*;
-use reqwest::{Client, Method, Request, Url};
+use reqwest::{Method, Url};
 use serde::Deserialize;
 
 #[derive(Deserialize)]
