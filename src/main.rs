@@ -12,6 +12,7 @@ extern crate serde;
 extern crate serde_json;
 extern crate toml;
 
+use base64::Engine;
 use rocket::http::{Cookies, Status};
 use rocket::request::Form;
 use rocket::response::Redirect;
@@ -32,6 +33,7 @@ mod tempctx;
 mod textlog;
 mod types;
 
+use base64::engine::general_purpose::STANDARD as BASE64;
 use config::Config;
 use db::OrgDbClient;
 use randstr::random_string;
@@ -55,7 +57,8 @@ fn auth(config: State<Config>, mut cookies: Cookies<'_>) -> Result<Redirect, Err
 
     let mut hasher = Sha256::default();
     hasher.update(code_verifier.as_bytes());
-    let hash_result = base64::encode(hasher.finalize())
+    let hash_result = BASE64
+        .encode(hasher.finalize())
         .replace("=", "")
         .replace("+", "-")
         .replace("/", "_");

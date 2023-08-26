@@ -7,7 +7,9 @@ pub fn timezone_from_string(timezone: &str) -> Result<Tz, ErrorBox> {
 }
 
 pub fn is_past_expiry(year: i32, timezone: Tz, month: u32, day: u32) -> bool {
-    let expiry = timezone.ymd(year, month, day).and_hms(23, 59, 59);
+    let expiry = timezone
+        .with_ymd_and_hms(year, month, day, 23, 59, 59)
+        .unwrap();
     let now = timezone.from_utc_datetime(&Utc::now().naive_utc());
     now > expiry
 }
@@ -21,7 +23,9 @@ pub fn is_past_expiry_this_year(timezone: Tz, month: u32, day: u32) -> bool {
 }
 
 pub fn is_past_renewal(exp_year: i32, timezone: Tz, month: u32, day: u32) -> bool {
-    let renewal_deadline = timezone.ymd(exp_year, month, day).and_hms(23, 59, 59);
+    let renewal_deadline = timezone
+        .with_ymd_and_hms(exp_year, month, day, 23, 59, 59)
+        .unwrap();
     let now = timezone.from_utc_datetime(&Utc::now().naive_utc());
     now > renewal_deadline
 }
