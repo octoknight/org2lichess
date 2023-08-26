@@ -30,6 +30,7 @@ pub struct OrgConfig {
 
 #[derive(Deserialize)]
 pub struct ExpiryConfig {
+    pub enable: bool,
     pub membership_month: u32,
     pub membership_day: u32,
     pub renewal_month: u32,

@@ -18,6 +18,7 @@ password_explanation = "Further explanation about the password (appears UNDER th
 memberid_pattern = "Regular expression for valid membership ID"
 
 [expiry]
+enable = true
 membership_month = 8
 membership_day = 31 # The last month and day on which an organisation's membership is valid
 renewal_month = 9

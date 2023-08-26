@@ -379,16 +379,18 @@ fn main() {
 
     let db_client = db::connect(&config.server.postgres_options).unwrap();
 
-    expwatch::launch(
-        db_client.clone(),
-        String::from("lichess.org"),
-        config.org.team_id.clone(),
-        config.lichess.personal_api_token.clone(),
-        config.server.expiry_check_interval_seconds,
-        org::timezone_from_string(&config.org.timezone).unwrap(),
-        config.expiry.renewal_month,
-        config.expiry.renewal_day,
-    );
+    if config.expiry.enable {
+        expwatch::launch(
+            db_client.clone(),
+            String::from("lichess.org"),
+            config.org.team_id.clone(),
+            config.lichess.personal_api_token.clone(),
+            config.server.expiry_check_interval_seconds,
+            org::timezone_from_string(&config.org.timezone).unwrap(),
+            config.expiry.renewal_month,
+            config.expiry.renewal_day,
+        );
+    }
 
     let http_client = reqwest::blocking::Client::new();
 
