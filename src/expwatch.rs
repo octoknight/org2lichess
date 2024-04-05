@@ -4,7 +4,6 @@ use crate::org;
 use crate::textlog;
 use crate::types::*;
 use chrono_tz::Tz;
-use reqwest;
 use std::thread;
 
 fn find_expired_members(

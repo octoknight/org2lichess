@@ -1,23 +1,12 @@
 #![feature(proc_macro_hygiene, decl_macro)]
 
-#[macro_use]
-extern crate rocket;
-extern crate chrono;
-extern crate postgres;
-extern crate rand;
-extern crate reqwest;
-extern crate rocket_contrib;
-extern crate serde;
-#[macro_use]
-extern crate serde_json;
-extern crate toml;
-
 use base64::Engine;
 use rocket::http::{Cookies, Status};
 use rocket::request::Form;
 use rocket::response::Redirect;
-use rocket::State;
+use rocket::{get, post, routes, uri, FromForm, State};
 use rocket_contrib::templates::Template;
+use serde_json::json;
 use std::collections::HashMap;
 use std::fs;
 
