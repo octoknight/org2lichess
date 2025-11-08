@@ -11,13 +11,13 @@ Use the below form to link your Lichess account <strong><a href="https://lichess
 </p>
 <form method="POST" action="/link">
   <div class="form-group">
-    <label for="org-id">{{ org.short_name }} member ID</label>
-    <input type="text" class="form-control" placeholder="{{ org.memberid_placeholder }}" name="org-id" id="org-id" required pattern="{{ org.memberid_pattern }}">
+    <label for="org_id">{{ org.short_name }} member ID</label>
+    <input type="text" class="form-control" placeholder="{{ org.memberid_placeholder }}" name="org_id" id="org_id" required pattern="{{ org.memberid_pattern }}">
     <small>Don't have a membership? <a href="/org-ref" tabindex="99">Become a member.</a></small>
   </div>
   <div class="form-group">
-    <label for="org-password">{{ org.authentication_secret_first_word }}</label>
-    <input type="password" class="form-control" name="org-password" id="org-password" placeholder="{{ org.password_placeholder }}" required>
+    <label for="org_password">{{ org.authentication_secret_first_word }}</label>
+    <input type="password" class="form-control" name="org_password" id="org_password" placeholder="{{ org.password_placeholder }}" required>
     <small>
     {{ org.password_explanation }}<br>
     Can't find your {{ org.authentication_secret }}? <a href="{{ org.authentication_secret_help_link }}">{{ org.authentication_secret_help }}</a>

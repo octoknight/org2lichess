@@ -192,9 +192,7 @@ async fn org_id_unused(
 
 #[derive(FromForm)]
 struct OrgInfo {
-    #[form(field = "org-id")]
     org_id: String,
-    #[form(field = "org-password")]
     org_password: String,
 }
 
