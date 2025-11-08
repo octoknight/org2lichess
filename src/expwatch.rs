@@ -23,11 +23,11 @@ fn find_expired_members(
     db.get_members_with_at_most_expiry_year(year)
 }
 
-fn clean_expired_members(
+async fn clean_expired_members(
     expired_members: Vec<Membership>,
     delay_ms: u64,
     db: &OrgDbClient,
-    http_client: &reqwest::blocking::Client,
+    http_client: &reqwest::Client,
     lichess_domain: &str,
     team_id: &str,
     api_token: &str,
@@ -39,7 +39,9 @@ fn clean_expired_members(
             &lichess_domain,
             &team_id,
             &member.lichess_id,
-        ) {
+        )
+        .await
+        {
             match db.remove_membership(&member.org_id) {
                 Ok(_) => {
                     textlog::append_line_to(
@@ -72,10 +74,10 @@ fn clean_expired_members(
 }
 
 #[allow(clippy::too_many_arguments)]
-fn find_and_clean_expired(
+async fn find_and_clean_expired(
     delay_ms: u64,
     db: &OrgDbClient,
-    http_client: &reqwest::blocking::Client,
+    http_client: &reqwest::Client,
     lichess_domain: &str,
     team_id: &str,
     api_token: &str,
@@ -84,15 +86,18 @@ fn find_and_clean_expired(
     renewal_day: u32,
 ) {
     match find_expired_members(&db, timezone, renewal_month, renewal_day) {
-        Ok(expired) => clean_expired_members(
-            expired,
-            delay_ms,
-            &db,
-            &http_client,
-            &lichess_domain,
-            &team_id,
-            &api_token,
-        ),
+        Ok(expired) => {
+            clean_expired_members(
+                expired,
+                delay_ms,
+                &db,
+                &http_client,
+                &lichess_domain,
+                &team_id,
+                &api_token,
+            )
+            .await
+        }
         _ => {
             textlog::append_line_to("expiry.error.log", "Could not fetch expired users from db")
                 .unwrap_or(());
@@ -112,8 +117,8 @@ pub fn launch(
     renewal_month: u32,
     renewal_day: u32,
 ) {
-    thread::spawn(move || {
-        let http_client = reqwest::blocking::Client::new();
+    rocket::tokio::task::spawn(async move {
+        let http_client = reqwest::Client::new();
 
         loop {
             println!("Finding and cleaning expired members...");
@@ -128,9 +133,10 @@ pub fn launch(
                 timezone,
                 renewal_month,
                 renewal_day,
-            );
+            )
+            .await;
 
-            thread::sleep(std::time::Duration::from_secs(interval_seconds));
+            rocket::tokio::time::sleep(std::time::Duration::from_secs(interval_seconds)).await;
         }
     });
 }

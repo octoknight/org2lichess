@@ -1,8 +1,8 @@
 use crate::types::*;
-use reqwest::blocking::{Client, Request};
+use reqwest::{Client, Request};
 use reqwest::{Method, Url};
 
-pub fn verify_user(
+pub async fn verify_user(
     http_client: &Client,
     member_id: &str,
     member_password: &str,
@@ -34,7 +34,7 @@ pub fn verify_user(
         );
     }
     let req = Request::new(Method::GET, url);
-    let response = http_client.execute(req)?.text()?;
+    let response = http_client.execute(req).await?.text().await?;
     println!("{}", response);
     Ok(response.trim() == "[[\"Return Code\",\"Message\"],[\"1\",\"Success\"]]")
 }

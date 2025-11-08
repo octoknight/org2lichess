@@ -40,12 +40,12 @@ fn to_500(e: ErrorBox) -> ErrorStatus {
 }
 
 #[get("/", rank = 2)]
-fn index(config: &State<Config>) -> Template {
+async fn index(config: &State<Config>) -> Template {
     Template::render("index", &empty_context(&config))
 }
 
 #[get("/auth")]
-fn auth(config: &State<Config>, cookies: &CookieJar<'_>) -> Result<Redirect, ErrorStatus> {
+async fn auth(config: &State<Config>, cookies: &CookieJar<'_>) -> Result<Redirect, ErrorStatus> {
     let oauth_state = random_string().map_err(|e| to_500(Box::new(e)))?;
     session::set_oauth_state_cookie(cookies, &oauth_state);
 
@@ -75,12 +75,12 @@ fn auth(config: &State<Config>, cookies: &CookieJar<'_>) -> Result<Redirect, Err
 }
 
 #[get("/oauth_redirect?<code>&<state>")]
-fn oauth_redirect(
+async fn oauth_redirect(
     cookies: &CookieJar<'_>,
     code: String,
     state: String,
     config: &State<Config>,
-    http_client: &State<reqwest::blocking::Client>,
+    http_client: &State<reqwest::Client>,
 ) -> Result<Result<Template, Status>, ErrorStatus> {
     match (
         session::pop_oauth_state(cookies).map(|v| v == state),
@@ -94,8 +94,11 @@ fn oauth_redirect(
                 &code_verifier,
                 &format!("{}/oauth_redirect", config.server.url),
             )
+            .await
             .unwrap();
-            let user = lichess::get_user(&token, &http_client, "lichess.org").unwrap();
+            let user = lichess::get_user(&token, &http_client, "lichess.org")
+                .await
+                .unwrap();
             session::set_session(
                 cookies,
                 Session {
@@ -112,7 +115,7 @@ fn oauth_redirect(
 }
 
 #[get("/")]
-fn manage_authed(
+async fn manage_authed(
     session: Session,
     config: &State<Config>,
     db: &State<OrgDbClient>,
@@ -156,7 +159,7 @@ fn can_use_form(
 }
 
 #[get("/link")]
-fn show_form(
+async fn show_form(
     session: Session,
     config: &State<Config>,
     db: &State<OrgDbClient>,
@@ -172,7 +175,7 @@ fn show_form(
 }
 
 #[get("/link", rank = 2)]
-fn form_redirect_index() -> Redirect {
+async fn form_redirect_index() -> Redirect {
     Redirect::to(uri!(index))
 }
 
@@ -196,12 +199,12 @@ struct OrgInfo {
 }
 
 #[post("/link", data = "<form>")]
-fn link_memberships(
+async fn link_memberships(
     form: Option<Form<OrgInfo>>,
     session: Session,
     config: &State<Config>,
     db: &State<OrgDbClient>,
-    http_client: &State<reqwest::blocking::Client>,
+    http_client: &State<reqwest::Client>,
 ) -> Result<Result<Redirect, Template>, ErrorStatus> {
     if !can_use_form(&session, &config, &db).map_err(to_500)? {
         return Ok(Ok(Redirect::to(uri!(index))));
@@ -223,7 +226,7 @@ fn link_memberships(
                     &config.org.authentication_secret,
                     &config.azolve.test_backdoor_member_id,
                     &config.azolve.test_backdoor_password,
-                ) {
+                ).await {
                 Ok(true) => {
                     if org_id_unused(&org_info.org_id, &session, &db).map_err(to_500)? {
                         if lichess::join_team(
@@ -232,7 +235,7 @@ fn link_memberships(
                             "lichess.org",
                             &config.org.team_id,
                             &config.lichess.team_password,
-                        ) {
+                        ).await {
                             db.register_member(
                                 &org_info.org_id,
                                 &session.lichess_id,
@@ -267,18 +270,18 @@ fn link_memberships(
 }
 
 #[post("/link", rank = 2)]
-fn try_link_unauthenticated() -> Redirect {
+async fn try_link_unauthenticated() -> Redirect {
     Redirect::to(uri!(index))
 }
 
 #[post("/logout")]
-fn logout(cookies: &CookieJar<'_>, config: &State<Config>) -> Template {
+async fn logout(cookies: &CookieJar<'_>, config: &State<Config>) -> Template {
     session::remove_session(cookies);
     Template::render("redirect", &empty_context(&config))
 }
 
 #[get("/admin")]
-fn admin(
+async fn admin(
     session: Session,
     config: &State<Config>,
     db: &State<OrgDbClient>,
@@ -298,12 +301,12 @@ fn admin(
 }
 
 #[get("/admin", rank = 2)]
-fn admin_unauthed() -> Redirect {
+async fn admin_unauthed() -> Redirect {
     Redirect::to(uri!(index))
 }
 
 #[get("/admin/user-json")]
-fn admin_user_json(
+async fn admin_user_json(
     session: Session,
     config: &State<Config>,
     db: &State<OrgDbClient>,
@@ -324,7 +327,11 @@ fn admin_user_json(
 }
 
 #[get("/admin/kick/<who>")]
-fn admin_kick(who: String, session: Session, config: &State<Config>) -> Result<Template, Status> {
+async fn admin_kick(
+    who: String,
+    session: Session,
+    config: &State<Config>,
+) -> Result<Template, Status> {
     let logged_in = make_logged_in_context(&session, &config);
 
     if logged_in.admin {
@@ -338,12 +345,12 @@ fn admin_kick(who: String, session: Session, config: &State<Config>) -> Result<T
 }
 
 #[post("/admin/kick/<who>")]
-fn admin_kick_confirmed(
+async fn admin_kick_confirmed(
     who: String,
     session: Session,
     config: &State<Config>,
     db: &State<OrgDbClient>,
-    http_client: &State<reqwest::blocking::Client>,
+    http_client: &State<reqwest::Client>,
 ) -> Result<Result<Redirect, Status>, ErrorStatus> {
     let logged_in = make_logged_in_context(&session, &config);
 
@@ -356,6 +363,7 @@ fn admin_kick_confirmed(
             &config.org.team_id,
             &who,
         )
+        .await
         .map_err(to_500)?;
         Ok(Ok(Redirect::to(uri!(admin))))
     } else {
@@ -364,7 +372,7 @@ fn admin_kick_confirmed(
 }
 
 #[get("/org-ref")]
-fn referral(
+async fn referral(
     session: Session,
     config: &State<Config>,
     db: &State<OrgDbClient>,
@@ -393,7 +401,7 @@ fn rocket() -> _ {
         );
     }
 
-    let http_client = reqwest::blocking::Client::new();
+    let http_client = reqwest::Client::new();
 
     rocket::build()
         .attach(Template::fairing())

@@ -1,6 +1,6 @@
 use crate::types::*;
-use reqwest::blocking::{Client, Request};
 use reqwest::header::*;
+use reqwest::{Client, Request};
 use reqwest::{Method, Url};
 use serde::Deserialize;
 
@@ -35,7 +35,7 @@ fn create_request(
     Ok(req)
 }
 
-pub fn get_user(
+pub async fn get_user(
     token: &OAuthToken,
     http_client: &Client,
     lichess_domain: &str,
@@ -46,11 +46,11 @@ pub fn get_user(
         "application/json",
         format!("{} {}", token.token_type, token.access_token),
     )?;
-    let response: User = http_client.execute(req)?.json()?;
+    let response: User = http_client.execute(req).await?.json().await?;
     Ok(response)
 }
 
-pub fn oauth_token_from_code(
+pub async fn oauth_token_from_code(
     code: &str,
     http_client: &Client,
     client_id: &str,
@@ -71,11 +71,11 @@ pub fn oauth_token_from_code(
     headers.insert(ACCEPT, "application/json".parse()?);
     headers.insert(CONTENT_TYPE, "application/x-www-form-urlencoded".parse()?);
 
-    let response: OAuthToken = http_client.execute(req)?.json()?;
+    let response: OAuthToken = http_client.execute(req).await?.json().await?;
     Ok(response)
 }
 
-fn try_join_team(
+async fn try_join_team(
     http_client: &Client,
     token: &str,
     lichess_domain: &str,
@@ -92,21 +92,23 @@ fn try_join_team(
     *body = Some(("password=".to_owned() + &urlencoding::encode(team_password)).into());
     let headers = req.headers_mut();
     headers.insert(CONTENT_TYPE, "application/x-www-form-urlencoded".parse()?);
-    let response: MaybeOk = http_client.execute(req)?.json()?;
+    let response: MaybeOk = http_client.execute(req).await?.json().await?;
     Ok(response.ok)
 }
 
-pub fn join_team(
+pub async fn join_team(
     http_client: &Client,
     token: &str,
     lichess_domain: &str,
     team_id: &str,
     team_password: &str,
 ) -> bool {
-    try_join_team(http_client, token, lichess_domain, team_id, team_password).unwrap_or(false)
+    try_join_team(http_client, token, lichess_domain, team_id, team_password)
+        .await
+        .unwrap_or(false)
 }
 
-pub fn try_kick_from_team(
+pub async fn try_kick_from_team(
     http_client: &Client,
     token: &str,
     lichess_domain: &str,
@@ -122,16 +124,18 @@ pub fn try_kick_from_team(
         "application/json",
         format!("Bearer {}", token),
     )?;
-    let response: MaybeOk = http_client.execute(req)?.json()?;
+    let response: MaybeOk = http_client.execute(req).await?.json().await?;
     Ok(response.ok)
 }
 
-pub fn kick_from_team(
+pub async fn kick_from_team(
     http_client: &Client,
     token: &str,
     lichess_domain: &str,
     team_id: &str,
     user_id: &str,
 ) -> bool {
-    try_kick_from_team(http_client, token, lichess_domain, team_id, user_id).unwrap_or(false)
+    try_kick_from_team(http_client, token, lichess_domain, team_id, user_id)
+        .await
+        .unwrap_or(false)
 }
