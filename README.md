@@ -8,6 +8,14 @@ They will also be automatically kicked again if their membership expries and the
 
 ### Setup
 
+org2lichess uses PostgreSQL. Set up the necessary tables in your database:
+
+```sql
+create table memberships (orgid varchar not null primary key, lichessid varchar not null unique, exp integer not null);
+
+create table ref (lichessid varchar not null primary key);
+```
+
 Copy `Config.default.toml` to `Config.toml` and fill in the values. Guidance for this is given
 in `Config.default.toml`. For the `[azolve]` configuration block: the assumption here is that
 your organization uses Azolve GoMembership to manage memberships (which is the case for the
@@ -15,4 +23,6 @@ English Chess Federation, for which this was originally written). If that's not 
 your organization, you'll have to modify `src/azolve.rs` to use APIs appropriate for your
 membership management system.
 
-To run it, simply run with cargo: `cargo run`
+Copy `Rocket.default.toml` to `Rocket.toml` and fill in `secret_key`. You can generate a key with `openssl rand -base64 32`.
+
+To run it, simply run with cargo: `cargo run --release`
