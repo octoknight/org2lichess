@@ -49,14 +49,16 @@ pub fn remove_session(cookies: &CookieJar<'_>) {
 pub fn set_oauth_state_cookie(cookies: &CookieJar<'_>, oauth_state: &str) {
     let mut oauth_state_cookie = Cookie::new(OAUTH_STATE_COOKIE, oauth_state.to_string());
     oauth_state_cookie.set_max_age(Duration::minutes(5));
-    cookies.add(oauth_state_cookie);
+    oauth_state_cookie.set_same_site(SameSite::Lax);
+    oauth_state_cookie.set_secure(true);
+    cookies.add_private(oauth_state_cookie);
 }
 
 pub fn pop_oauth_state(cookies: &CookieJar<'_>) -> Option<String> {
     let cookie_value = cookies
-        .get(OAUTH_STATE_COOKIE)
+        .get_private(OAUTH_STATE_COOKIE)
         .map(|c| c.value().to_string());
-    cookies.remove(OAUTH_STATE_COOKIE);
+    cookies.remove_private(OAUTH_STATE_COOKIE);
     cookie_value
 }
 
