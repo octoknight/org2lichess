@@ -12,13 +12,13 @@ rocket_dyn_templates = { version = "0.2.0", features = ["tera"] }
 postgres = "0.19"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-toml = "0.7"
-rand = "0.8"
+toml = "0.9"
+rand = "0.9"
 reqwest = { version = "0.12", features = [ "json" ] }
-chrono = "= 0.4.29"
-chrono-tz = "0.5"
+chrono = "= 0.4"
+chrono-tz = "0.10"
 bb8 = "0.9"
 bb8-postgres = "0.9"
 urlencoding = "2.1"
 sha2 = "0.10"
-base64 = "0.21"
+base64 = "0.22"
