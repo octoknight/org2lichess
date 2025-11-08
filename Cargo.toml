@@ -7,7 +7,8 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-rocket = "0.4"
+rocket = { version = "0.5.1", features = ["json", "secrets"] }
+rocket_dyn_templates = { version = "0.2.0", features = ["tera"] }
 postgres = "0.19"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
@@ -21,11 +22,3 @@ r2d2_postgres = "0.18"
 urlencoding = "2.1"
 sha2 = "0.10"
 base64 = "0.21"
-
-[dependencies.rocket_contrib]
-version = "0.4"
-default-features = false
-features = ["tera_templates"]
-
-[patch.crates-io]
-traitobject = { git = "https://github.com/reem/rust-traitobject", rev = "b3471a15917b2caf5a8b27debb0b4b390fc6634f" }

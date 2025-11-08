@@ -50,7 +50,7 @@ pub struct KickConfirmContext<'a> {
     pub who: String,
 }
 
-pub fn empty_context(config: &Config) -> BaseContext {
+pub fn empty_context(config: &Config) -> BaseContext<'_> {
     BaseContext { org: &config.org }
 }
 

@@ -1,11 +1,12 @@
 #![feature(proc_macro_hygiene, decl_macro)]
 
 use base64::Engine;
-use rocket::http::{Cookies, Status};
-use rocket::request::Form;
-use rocket::response::Redirect;
-use rocket::{get, post, routes, uri, FromForm, State};
-use rocket_contrib::templates::Template;
+use rocket::form::Form;
+use rocket::http::{CookieJar, Status};
+use rocket::response::{status, Redirect};
+use rocket::serde::json::Json;
+use rocket::{get, launch, post, routes, uri, FromForm, State};
+use rocket_dyn_templates::Template;
 use serde_json::json;
 use std::collections::HashMap;
 use std::fs;
@@ -31,18 +32,25 @@ use sha2::{Digest, Sha256};
 use tempctx::*;
 use types::*;
 
+type ErrorStatus = status::Custom<&'static str>;
+
+fn to_500(e: ErrorBox) -> ErrorStatus {
+    println!("Internal server error: {}", e);
+    status::Custom(Status::InternalServerError, "Internal Server Error")
+}
+
 #[get("/", rank = 2)]
-fn index(config: State<Config>) -> Template {
+fn index(config: &State<Config>) -> Template {
     Template::render("index", &empty_context(&config))
 }
 
 #[get("/auth")]
-fn auth(config: State<Config>, mut cookies: Cookies<'_>) -> Result<Redirect, ErrorBox> {
-    let oauth_state = random_string()?;
-    session::set_oauth_state_cookie(&mut cookies, &oauth_state);
+fn auth(config: &State<Config>, cookies: &CookieJar<'_>) -> Result<Redirect, ErrorStatus> {
+    let oauth_state = random_string().map_err(|e| to_500(Box::new(e)))?;
+    session::set_oauth_state_cookie(cookies, &oauth_state);
 
-    let code_verifier = random_string()?;
-    session::set_oauth_code_verifier(&mut cookies, &code_verifier);
+    let code_verifier = random_string().map_err(|e| to_500(Box::new(e)))?;
+    session::set_oauth_code_verifier(cookies, &code_verifier);
 
     let mut hasher = Sha256::default();
     hasher.update(code_verifier.as_bytes());
@@ -68,15 +76,15 @@ fn auth(config: State<Config>, mut cookies: Cookies<'_>) -> Result<Redirect, Err
 
 #[get("/oauth_redirect?<code>&<state>")]
 fn oauth_redirect(
-    mut cookies: Cookies<'_>,
+    cookies: &CookieJar<'_>,
     code: String,
     state: String,
-    config: State<Config>,
-    http_client: State<reqwest::blocking::Client>,
-) -> Result<Result<Template, Status>, ErrorBox> {
+    config: &State<Config>,
+    http_client: &State<reqwest::blocking::Client>,
+) -> Result<Result<Template, Status>, ErrorStatus> {
     match (
-        session::pop_oauth_state(&mut cookies).map(|v| v == state),
-        session::pop_oauth_code_verifier(&mut cookies),
+        session::pop_oauth_state(cookies).map(|v| v == state),
+        session::pop_oauth_code_verifier(cookies),
     ) {
         (Some(true), Some(code_verifier)) => {
             let token = lichess::oauth_token_from_code(
@@ -95,7 +103,8 @@ fn oauth_redirect(
                     lichess_username: user.username,
                     oauth_token: token.access_token,
                 },
-            )?;
+            )
+            .map_err(to_500)?;
             Ok(Ok(Template::render("redirect", &empty_context(&config))))
         }
         _ => Ok(Err(Status::BadRequest)),
@@ -105,19 +114,22 @@ fn oauth_redirect(
 #[get("/")]
 fn manage_authed(
     session: Session,
-    config: State<Config>,
-    db: State<OrgDbClient>,
-) -> Result<Template, ErrorBox> {
+    config: &State<Config>,
+    db: &State<OrgDbClient>,
+) -> Result<Template, ErrorStatus> {
     let logged_in = make_logged_in_context(&session, &config);
 
-    match db.get_member_for_lichess_id(&session.lichess_id)? {
+    match db
+        .get_member_for_lichess_id(&session.lichess_id)
+        .map_err(to_500)?
+    {
         Some(member) => Ok(Template::render(
             "linked",
             make_linked_context(
                 logged_in,
                 member.org_id,
                 member.exp_year,
-                can_use_form(&session, &config, &db)?,
+                can_use_form(&session, &config, &db).map_err(to_500)?,
                 &config.expiry,
             ),
         )),
@@ -146,10 +158,10 @@ fn can_use_form(
 #[get("/link")]
 fn show_form(
     session: Session,
-    config: State<Config>,
-    db: State<OrgDbClient>,
-) -> Result<Result<Template, Redirect>, ErrorBox> {
-    if !can_use_form(&session, &config, &db)? {
+    config: &State<Config>,
+    db: &State<OrgDbClient>,
+) -> Result<Result<Template, Redirect>, ErrorStatus> {
+    if !can_use_form(&session, &config, &db).map_err(to_500)? {
         Ok(Err(Redirect::to(uri!(index))))
     } else {
         Ok(Ok(Template::render(
@@ -187,17 +199,17 @@ struct OrgInfo {
 fn link_memberships(
     form: Option<Form<OrgInfo>>,
     session: Session,
-    config: State<Config>,
-    db: State<OrgDbClient>,
-    http_client: State<reqwest::blocking::Client>,
-) -> Result<Result<Redirect, Template>, ErrorBox> {
-    if !can_use_form(&session, &config, &db)? {
+    config: &State<Config>,
+    db: &State<OrgDbClient>,
+    http_client: &State<reqwest::blocking::Client>,
+) -> Result<Result<Redirect, Template>, ErrorStatus> {
+    if !can_use_form(&session, &config, &db).map_err(to_500)? {
         return Ok(Ok(Redirect::to(uri!(index))));
     }
 
     let logged_in = make_logged_in_context(&session, &config);
 
-    let timezone = org::timezone_from_string(&config.org.timezone)?;
+    let timezone = org::timezone_from_string(&config.org.timezone).map_err(to_500)?;
 
     Ok(match form {
         Some(org_info) => {
@@ -213,7 +225,7 @@ fn link_memberships(
                     &config.azolve.test_backdoor_password,
                 ) {
                 Ok(true) => {
-                    if org_id_unused(&org_info.org_id, &session, &db)? {
+                    if org_id_unused(&org_info.org_id, &session, &db).map_err(to_500)? {
                         if lichess::join_team(
                             &http_client,
                             &session.oauth_token,
@@ -230,7 +242,7 @@ fn link_memberships(
                                     } else {
                                         0
                                     }),
-                            )?;
+                            ).map_err(to_500)?;
                             Ok(Redirect::to(uri!(index)))
                         } else {
                             Err(Template::render("form", make_error_context(logged_in, "Could not add you to the Lichess team, please try again later.")))
@@ -260,7 +272,7 @@ fn try_link_unauthenticated() -> Redirect {
 }
 
 #[post("/logout")]
-fn logout(cookies: Cookies<'_>, config: State<Config>) -> Template {
+fn logout(cookies: &CookieJar<'_>, config: &State<Config>) -> Template {
     session::remove_session(cookies);
     Template::render("redirect", &empty_context(&config))
 }
@@ -268,14 +280,14 @@ fn logout(cookies: Cookies<'_>, config: State<Config>) -> Template {
 #[get("/admin")]
 fn admin(
     session: Session,
-    config: State<Config>,
-    db: State<OrgDbClient>,
-) -> Result<Result<Template, Status>, ErrorBox> {
+    config: &State<Config>,
+    db: &State<OrgDbClient>,
+) -> Result<Result<Template, Status>, ErrorStatus> {
     let logged_in = make_logged_in_context(&session, &config);
 
     if logged_in.admin {
-        let members = db.get_members()?;
-        let ref_count = db.referral_count()?;
+        let members = db.get_members().map_err(to_500)?;
+        let ref_count = db.referral_count().map_err(to_500)?;
         Ok(Ok(Template::render(
             "admin",
             make_admin_context(logged_in, ref_count, members),
@@ -293,28 +305,26 @@ fn admin_unauthed() -> Redirect {
 #[get("/admin/user-json")]
 fn admin_user_json(
     session: Session,
-    config: State<Config>,
-    db: State<OrgDbClient>,
-) -> Result<Result<rocket::response::content::Json<String>, Status>, ErrorBox> {
+    config: &State<Config>,
+    db: &State<OrgDbClient>,
+) -> Result<Result<Json<HashMap<String, serde_json::Value>>, Status>, ErrorStatus> {
     let logged_in = make_logged_in_context(&session, &config);
 
     if logged_in.admin {
-        let members = db.get_members()?;
+        let members = db.get_members().map_err(to_500)?;
         let mut map: HashMap<String, serde_json::Value> = HashMap::new();
         for member in members {
             let details = json!([member.lichess_id, 0]);
             map.insert(member.org_id.to_string(), details);
         }
-        Ok(Ok(rocket::response::content::Json(serde_json::to_string(
-            &map,
-        )?)))
+        Ok(Ok(Json(map)))
     } else {
         Ok(Err(Status::Forbidden))
     }
 }
 
 #[get("/admin/kick/<who>")]
-fn admin_kick(who: String, session: Session, config: State<Config>) -> Result<Template, Status> {
+fn admin_kick(who: String, session: Session, config: &State<Config>) -> Result<Template, Status> {
     let logged_in = make_logged_in_context(&session, &config);
 
     if logged_in.admin {
@@ -331,21 +341,22 @@ fn admin_kick(who: String, session: Session, config: State<Config>) -> Result<Te
 fn admin_kick_confirmed(
     who: String,
     session: Session,
-    config: State<Config>,
-    db: State<OrgDbClient>,
-    http_client: State<reqwest::blocking::Client>,
-) -> Result<Result<Redirect, Status>, ErrorBox> {
+    config: &State<Config>,
+    db: &State<OrgDbClient>,
+    http_client: &State<reqwest::blocking::Client>,
+) -> Result<Result<Redirect, Status>, ErrorStatus> {
     let logged_in = make_logged_in_context(&session, &config);
 
     if logged_in.admin {
-        db.remove_membership_by_lichess_id(&who)?;
+        db.remove_membership_by_lichess_id(&who).map_err(to_500)?;
         lichess::try_kick_from_team(
             &http_client,
             &config.lichess.personal_api_token,
             "lichess.org",
             &config.org.team_id,
             &who,
-        )?;
+        )
+        .map_err(to_500)?;
         Ok(Ok(Redirect::to(uri!(admin))))
     } else {
         Ok(Err(Status::Forbidden))
@@ -355,14 +366,15 @@ fn admin_kick_confirmed(
 #[get("/org-ref")]
 fn referral(
     session: Session,
-    config: State<Config>,
-    db: State<OrgDbClient>,
-) -> Result<Redirect, ErrorBox> {
-    db.referral_click(&session.lichess_id)?;
+    config: &State<Config>,
+    db: &State<OrgDbClient>,
+) -> Result<Redirect, ErrorStatus> {
+    db.referral_click(&session.lichess_id).map_err(to_500)?;
     Ok(Redirect::to(config.org.referral_link.clone()))
 }
 
-fn main() {
+#[launch]
+fn rocket() -> _ {
     let config_contents = fs::read_to_string("Config.toml").expect("Cannot read Config.toml");
     let config: Config = toml::from_str(&config_contents).expect("Invalid Config.toml");
 
@@ -383,7 +395,7 @@ fn main() {
 
     let http_client = reqwest::blocking::Client::new();
 
-    rocket::ignite()
+    rocket::build()
         .attach(Template::fairing())
         .manage(config)
         .manage(http_client)
@@ -408,5 +420,4 @@ fn main() {
                 referral
             ],
         )
-        .launch();
 }
