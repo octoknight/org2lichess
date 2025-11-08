@@ -1,5 +1,3 @@
-#![feature(proc_macro_hygiene, decl_macro)]
-
 use base64::Engine;
 use rocket::form::Form;
 use rocket::http::{CookieJar, Status};
