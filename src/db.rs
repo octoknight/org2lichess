@@ -73,11 +73,6 @@ impl OrgDbClient {
         Ok(extract_one_membership(&rows))
     }
 
-    pub fn lichess_member_has_org(&self, lichess_id: &str) -> Result<bool, ErrorBox> {
-        self.get_member_for_lichess_id(lichess_id)
-            .map(|member| member.is_some())
-    }
-
     pub fn remove_membership(&self, org_id: &str) -> Result<u64, ErrorBox> {
         let result = self
             .w()?
