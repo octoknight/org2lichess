@@ -1,0 +1,8 @@
+[debug]
+address = "127.0.0.1"
+port = 44444
+
+[release]
+address = "127.0.0.1"
+port = 44444
+secret_key = "secret key here"
