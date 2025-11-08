@@ -59,14 +59,16 @@ pub async fn oauth_token_from_code(
 ) -> Result<OAuthToken, Box<dyn std::error::Error>> {
     let mut req = Request::new(Method::POST, Url::parse("https://lichess.org/api/token")?);
     let body = req.body_mut();
-    *body =
-        Some(
-            format!(
+    *body = Some(
+        format!(
             "grant_type=authorization_code&code={}&redirect_uri={}&client_id={}&code_verifier={}",
-            code, urlencoding::encode(redirect_uri), client_id, code_verifier
+            code,
+            urlencoding::encode(redirect_uri),
+            client_id,
+            code_verifier
         )
-            .into(),
-        );
+        .into(),
+    );
     let headers = req.headers_mut();
     headers.insert(ACCEPT, "application/json".parse()?);
     headers.insert(CONTENT_TYPE, "application/x-www-form-urlencoded".parse()?);

@@ -1,9 +1,9 @@
 use base64::Engine;
 use rocket::form::Form;
 use rocket::http::{CookieJar, Status};
-use rocket::response::{status, Redirect};
+use rocket::response::{Redirect, status};
 use rocket::serde::json::Json;
-use rocket::{get, launch, post, routes, uri, FromForm, State};
+use rocket::{FromForm, State, get, launch, post, routes, uri};
 use rocket_dyn_templates::Template;
 use serde_json::json;
 use std::collections::HashMap;
@@ -215,49 +215,82 @@ async fn link_memberships(
     Ok(match form {
         Some(org_info) => {
             match azolve::verify_user(
-                    &http_client,
-                    &org_info.org_id,
-                    &org_info.org_password,
-                    &config.azolve.api,
-                    &config.azolve.api_pwd,
-                    &config.azolve.api_token,
-                    &config.org.authentication_secret,
-                    &config.azolve.test_backdoor_member_id,
-                    &config.azolve.test_backdoor_password,
-                ).await {
+                &http_client,
+                &org_info.org_id,
+                &org_info.org_password,
+                &config.azolve.api,
+                &config.azolve.api_pwd,
+                &config.azolve.api_token,
+                &config.org.authentication_secret,
+                &config.azolve.test_backdoor_member_id,
+                &config.azolve.test_backdoor_password,
+            )
+            .await
+            {
                 Ok(true) => {
-                    if org_id_unused(&org_info.org_id, &session, &db).await.map_err(to_500)? {
+                    if org_id_unused(&org_info.org_id, &session, &db)
+                        .await
+                        .map_err(to_500)?
+                    {
                         if lichess::join_team(
                             &http_client,
                             &session.oauth_token,
                             "lichess.org",
                             &config.org.team_id,
                             &config.lichess.team_password,
-                        ).await {
+                        )
+                        .await
+                        {
                             db.register_member(
                                 &org_info.org_id,
                                 &session.lichess_id,
                                 org::current_year(timezone)
-                                    + (if org::is_past_expiry_this_year(timezone, config.expiry.membership_month, config.expiry.membership_day) {
+                                    + (if org::is_past_expiry_this_year(
+                                        timezone,
+                                        config.expiry.membership_month,
+                                        config.expiry.membership_day,
+                                    ) {
                                         1
                                     } else {
                                         0
                                     }),
-                            ).await.map_err(to_500)?;
+                            )
+                            .await
+                            .map_err(to_500)?;
                             Ok(Redirect::to(uri!(index)))
                         } else {
-                            Err(Template::render("form", make_error_context(logged_in, "Could not add you to the Lichess team, please try again later.")))
+                            Err(Template::render(
+                                "form",
+                                make_error_context(
+                                    logged_in,
+                                    "Could not add you to the Lichess team, please try again later.",
+                                ),
+                            ))
                         }
                     } else {
-                        Err(Template::render("form", make_error_context(logged_in, "This membership is already linked to a Lichess account.")))
+                        Err(Template::render(
+                            "form",
+                            make_error_context(
+                                logged_in,
+                                "This membership is already linked to a Lichess account.",
+                            ),
+                        ))
                     }
                 }
-                Ok(false) => {
-                    Err(Template::render("form", make_error_context(logged_in, "Membership verification failed, please check your member ID and password.")))
-                }
-                _ => {
-                    Err(Template::render("form", make_error_context(logged_in, "At the moment we're unable to verify your membership. Please try again later.")))
-                }
+                Ok(false) => Err(Template::render(
+                    "form",
+                    make_error_context(
+                        logged_in,
+                        "Membership verification failed, please check your member ID and password.",
+                    ),
+                )),
+                _ => Err(Template::render(
+                    "form",
+                    make_error_context(
+                        logged_in,
+                        "At the moment we're unable to verify your membership. Please try again later.",
+                    ),
+                )),
             }
         }
         None => Err(Template::render(

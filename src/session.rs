@@ -1,9 +1,9 @@
 use crate::types::*;
+use rocket::Request;
 use rocket::http::{Cookie, CookieJar, SameSite, Status};
 use rocket::outcome::IntoOutcome;
 use rocket::request::{FromRequest, Outcome};
 use rocket::time::Duration;
-use rocket::Request;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]
