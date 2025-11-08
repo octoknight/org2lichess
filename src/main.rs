@@ -124,6 +124,7 @@ async fn manage_authed(
 
     match db
         .get_member_for_lichess_id(&session.lichess_id)
+        .await
         .map_err(to_500)?
     {
         Some(member) => Ok(Template::render(
@@ -132,7 +133,7 @@ async fn manage_authed(
                 logged_in,
                 member.org_id,
                 member.exp_year,
-                can_use_form(&session, &config, &db).map_err(to_500)?,
+                can_use_form(&session, &config, &db).await.map_err(to_500)?,
                 &config.expiry,
             ),
         )),
@@ -140,13 +141,14 @@ async fn manage_authed(
     }
 }
 
-fn can_use_form(
+async fn can_use_form(
     session: &Session,
     config: &State<Config>,
     db: &State<OrgDbClient>,
 ) -> Result<bool, ErrorBox> {
     let timezone = org::timezone_from_string(&config.org.timezone)?;
     db.get_member_for_lichess_id(&session.lichess_id)
+        .await
         .map(|maybe_member| match maybe_member {
             Some(member) => org::is_past_expiry(
                 member.exp_year,
@@ -164,7 +166,7 @@ async fn show_form(
     config: &State<Config>,
     db: &State<OrgDbClient>,
 ) -> Result<Result<Template, Redirect>, ErrorStatus> {
-    if !can_use_form(&session, &config, &db).map_err(to_500)? {
+    if !can_use_form(&session, &config, &db).await.map_err(to_500)? {
         Ok(Err(Redirect::to(uri!(index))))
     } else {
         Ok(Ok(Template::render(
@@ -179,12 +181,12 @@ async fn form_redirect_index() -> Redirect {
     Redirect::to(uri!(index))
 }
 
-fn org_id_unused(
+async fn org_id_unused(
     org_id: &str,
     session: &Session,
     db: &State<OrgDbClient>,
 ) -> Result<bool, ErrorBox> {
-    match db.get_member_for_org_id(&org_id)? {
+    match db.get_member_for_org_id(&org_id).await? {
         Some(member) => Ok(session.lichess_id == member.lichess_id),
         None => Ok(true),
     }
@@ -206,7 +208,7 @@ async fn link_memberships(
     db: &State<OrgDbClient>,
     http_client: &State<reqwest::Client>,
 ) -> Result<Result<Redirect, Template>, ErrorStatus> {
-    if !can_use_form(&session, &config, &db).map_err(to_500)? {
+    if !can_use_form(&session, &config, &db).await.map_err(to_500)? {
         return Ok(Ok(Redirect::to(uri!(index))));
     }
 
@@ -228,7 +230,7 @@ async fn link_memberships(
                     &config.azolve.test_backdoor_password,
                 ).await {
                 Ok(true) => {
-                    if org_id_unused(&org_info.org_id, &session, &db).map_err(to_500)? {
+                    if org_id_unused(&org_info.org_id, &session, &db).await.map_err(to_500)? {
                         if lichess::join_team(
                             &http_client,
                             &session.oauth_token,
@@ -245,7 +247,7 @@ async fn link_memberships(
                                     } else {
                                         0
                                     }),
-                            ).map_err(to_500)?;
+                            ).await.map_err(to_500)?;
                             Ok(Redirect::to(uri!(index)))
                         } else {
                             Err(Template::render("form", make_error_context(logged_in, "Could not add you to the Lichess team, please try again later.")))
@@ -289,8 +291,8 @@ async fn admin(
     let logged_in = make_logged_in_context(&session, &config);
 
     if logged_in.admin {
-        let members = db.get_members().map_err(to_500)?;
-        let ref_count = db.referral_count().map_err(to_500)?;
+        let members = db.get_members().await.map_err(to_500)?;
+        let ref_count = db.referral_count().await.map_err(to_500)?;
         Ok(Ok(Template::render(
             "admin",
             make_admin_context(logged_in, ref_count, members),
@@ -314,7 +316,7 @@ async fn admin_user_json(
     let logged_in = make_logged_in_context(&session, &config);
 
     if logged_in.admin {
-        let members = db.get_members().map_err(to_500)?;
+        let members = db.get_members().await.map_err(to_500)?;
         let mut map: HashMap<String, serde_json::Value> = HashMap::new();
         for member in members {
             let details = json!([member.lichess_id, 0]);
@@ -355,7 +357,9 @@ async fn admin_kick_confirmed(
     let logged_in = make_logged_in_context(&session, &config);
 
     if logged_in.admin {
-        db.remove_membership_by_lichess_id(&who).map_err(to_500)?;
+        db.remove_membership_by_lichess_id(&who)
+            .await
+            .map_err(to_500)?;
         lichess::try_kick_from_team(
             &http_client,
             &config.lichess.personal_api_token,
@@ -377,16 +381,18 @@ async fn referral(
     config: &State<Config>,
     db: &State<OrgDbClient>,
 ) -> Result<Redirect, ErrorStatus> {
-    db.referral_click(&session.lichess_id).map_err(to_500)?;
+    db.referral_click(&session.lichess_id)
+        .await
+        .map_err(to_500)?;
     Ok(Redirect::to(config.org.referral_link.clone()))
 }
 
 #[launch]
-fn rocket() -> _ {
+async fn rocket() -> _ {
     let config_contents = fs::read_to_string("Config.toml").expect("Cannot read Config.toml");
     let config: Config = toml::from_str(&config_contents).expect("Invalid Config.toml");
 
-    let db_client = db::connect(&config.server.postgres_options).unwrap();
+    let db_client = db::connect(&config.server.postgres_options).await.unwrap();
 
     if config.expiry.enable {
         expwatch::launch(

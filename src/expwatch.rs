@@ -6,7 +6,7 @@ use crate::types::*;
 use chrono_tz::Tz;
 use std::thread;
 
-fn find_expired_members(
+async fn find_expired_members(
     db: &OrgDbClient,
     timezone: Tz,
     month: u32,
@@ -20,7 +20,7 @@ fn find_expired_members(
         current_year - 1
     };
 
-    db.get_members_with_at_most_expiry_year(year)
+    db.get_members_with_at_most_expiry_year(year).await
 }
 
 async fn clean_expired_members(
@@ -42,7 +42,7 @@ async fn clean_expired_members(
         )
         .await
         {
-            match db.remove_membership(&member.org_id) {
+            match db.remove_membership(&member.org_id).await {
                 Ok(_) => {
                     textlog::append_line_to(
                         "kick.log",
@@ -85,7 +85,7 @@ async fn find_and_clean_expired(
     renewal_month: u32,
     renewal_day: u32,
 ) {
-    match find_expired_members(&db, timezone, renewal_month, renewal_day) {
+    match find_expired_members(&db, timezone, renewal_month, renewal_day).await {
         Ok(expired) => {
             clean_expired_members(
                 expired,
