@@ -1,7 +1,7 @@
 use crate::types::*;
-use reqwest::header::*;
 use reqwest::{Client, Request};
 use reqwest::{Method, Url};
+use reqwest::{StatusCode, header::*};
 use serde::Deserialize;
 
 #[derive(Deserialize)]
@@ -94,8 +94,46 @@ async fn try_join_team(
     *body = Some(("password=".to_owned() + &urlencoding::encode(team_password)).into());
     let headers = req.headers_mut();
     headers.insert(CONTENT_TYPE, "application/x-www-form-urlencoded".parse()?);
-    let response: MaybeOk = http_client.execute(req).await?.json().await?;
-    Ok(response.ok)
+
+    let response = match http_client.execute(req).await {
+        Ok(resp) => resp,
+        Err(e) => {
+            println!("Lichess team join request error: {:?}", e);
+            return Err(Box::new(e));
+        }
+    };
+
+    let status = response.status();
+    if status != StatusCode::OK {
+        println!("Lichess team join status code {}", status);
+    }
+
+    let text: String = match response.text().await {
+        Ok(t) => t,
+        Err(e) => {
+            println!("Lichess team join response.text() error: {:?}", e);
+            return Err(Box::new(e));
+        }
+    };
+
+    if status != StatusCode::OK {
+        println!("Lichess team join response: {}", text);
+    }
+
+    let json: MaybeOk = match serde_json::from_str(&text) {
+        Ok(j) => j,
+        Err(e) => {
+            println!("Lichess team join JSON decode error: {:?}", e);
+            println!("Response text is: {}", text);
+            return Err(Box::new(e));
+        }
+    };
+
+    let ok = json.ok;
+    if !ok {
+        println!("Lichess team join returned ok=false but no HTTP error.");
+    }
+    Ok(ok)
 }
 
 pub async fn join_team(
@@ -105,9 +143,13 @@ pub async fn join_team(
     team_id: &str,
     team_password: &str,
 ) -> bool {
-    try_join_team(http_client, token, lichess_domain, team_id, team_password)
-        .await
-        .unwrap_or(false)
+    match try_join_team(http_client, token, lichess_domain, team_id, team_password).await {
+        Ok(b) => b,
+        Err(e) => {
+            println!("join_team err: {:?}", e);
+            false
+        }
+    }
 }
 
 pub async fn try_kick_from_team(
